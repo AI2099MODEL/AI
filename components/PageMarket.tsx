@@ -1,7 +1,7 @@
 import React from 'react';
 import { StockRecommendation, MarketData, MarketSettings } from '../types';
 import { StockCard } from './StockCard';
-import { RefreshCw, Globe, TrendingUp, DollarSign, Clock, Calendar, BarChart, Zap } from 'lucide-react';
+import { RefreshCw, Globe, TrendingUp, DollarSign, Clock, Calendar, BarChart, Zap, Cpu } from 'lucide-react';
 
 interface PageMarketProps {
   recommendations: StockRecommendation[];
@@ -31,6 +31,7 @@ export const PageMarket: React.FC<PageMarketProps> = ({
 
   const mcxRecs = recommendations.filter(r => r.type === 'MCX');
   const forexRecs = recommendations.filter(r => r.type === 'FOREX');
+  const cryptoRecs = recommendations.filter(r => r.type === 'CRYPTO');
 
   const renderSection = (title: string, items: StockRecommendation[], icon: React.ReactNode, description: string, accentColor: string) => {
     if (items.length === 0 && !isLoading) return null;
@@ -61,8 +62,8 @@ export const PageMarket: React.FC<PageMarketProps> = ({
     <div className="p-4 pb-20 animate-fade-in">
       <div className="flex justify-between items-center mb-6">
          <div>
-             <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-white">Equity & Derivatives</h1>
-             <p className="text-xs text-slate-400">AI-Powered Nifty Recommendations</p>
+             <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-white">Markets & Charts</h1>
+             <p className="text-xs text-slate-400">AI-Powered Technical Analysis</p>
          </div>
          <button onClick={onRefresh} className={`p-2 bg-blue-600 rounded-full text-white shadow-lg ${isLoading ? 'animate-spin' : ''}`}>
             <RefreshCw size={18} />
@@ -75,15 +76,15 @@ export const PageMarket: React.FC<PageMarketProps> = ({
             {renderSection("BTST Picks", btstRecs, <Clock size={20}/>, "Buy Today, Sell Tomorrow", "text-blue-400")}
             {renderSection("Weekly Picks", weeklyRecs, <Calendar size={20}/>, "Short Term Holding (5-7 Days)", "text-purple-400")}
             {renderSection("Monthly Picks", monthlyRecs, <BarChart size={20}/>, "Positional Trades (1 Month+)", "text-green-400")}
-            {/* Catch-all for stocks not strictly categorized */}
             {renderSection("Other Stocks", otherStocks, <TrendingUp size={20}/>, "Intraday & Momentum", "text-slate-400")}
         </>
       )}
 
+      {enabledMarkets.crypto && renderSection("Crypto Assets", cryptoRecs, <Cpu size={20}/>, "Digital Currency Signals", "text-purple-400")}
       {enabledMarkets.mcx && renderSection("MCX Commodities", mcxRecs, <Globe size={20}/>, "Futures: Gold, Silver, Crude", "text-yellow-400")}
       {enabledMarkets.forex && renderSection("Forex Pairs", forexRecs, <DollarSign size={20}/>, "Currency derivatives", "text-teal-400")}
       
-      {!enabledMarkets.stocks && !enabledMarkets.mcx && !enabledMarkets.forex && (
+      {!enabledMarkets.stocks && !enabledMarkets.mcx && !enabledMarkets.forex && !enabledMarkets.crypto && (
           <div className="text-center text-slate-500 mt-10">Enable markets in Config to see data.</div>
       )}
       <div className="h-8"></div>

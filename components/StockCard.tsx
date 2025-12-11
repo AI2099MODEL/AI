@@ -1,6 +1,6 @@
 import React from 'react';
 import { StockRecommendation, MarketData } from '../types';
-import { TrendingUp, TrendingDown, Activity, AlertCircle, Zap, BarChart2, Globe, DollarSign, Box, Cpu, Target, Clock } from 'lucide-react';
+import { TrendingUp, TrendingDown, Zap, BarChart2, Globe, DollarSign, Box, Cpu, Target, Scan } from 'lucide-react';
 
 interface StockCardProps {
   stock: StockRecommendation;
@@ -82,6 +82,15 @@ export const StockCard: React.FC<StockCardProps> = ({ stock, marketData, onTrade
           </div>
       </div>
 
+      {/* AI Chart Pattern Logic */}
+      <div className="flex items-center gap-2 mb-3 bg-indigo-500/10 border border-indigo-500/20 p-2 rounded-lg">
+          <Scan size={14} className="text-indigo-400 flex-shrink-0" />
+          <div className="text-xs">
+              <span className="text-indigo-300 font-bold block">AI Chart Pattern:</span>
+              <span className="text-white italic">{stock.chartPattern || "Trend Follow"}</span>
+          </div>
+      </div>
+
       {stock.lotSize !== 1 && (
           <div className="flex items-center gap-1 text-[10px] text-slate-500 mb-2">
               <Box size={10} /> Lot Size: {stock.lotSize}
@@ -98,7 +107,7 @@ export const StockCard: React.FC<StockCardProps> = ({ stock, marketData, onTrade
             ))}
             {(!tech?.activeSignals || tech.activeSignals.length === 0) && (
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-500">
-                    No clear signals
+                    Range Bound
                 </span>
             )}
         </div>

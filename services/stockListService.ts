@@ -515,6 +515,49 @@ export const STATIC_CRYPTO_LIST = [
     "BTC", "ETH", "SOL", "BNB", "XRP", "ADA"
 ];
 
+let NAME_CACHE: Map<string, string> | null = null;
+
+const initNameCache = () => {
+    if (NAME_CACHE) return;
+    NAME_CACHE = new Map<string, string>();
+    const lines = STATIC_NSE_LIST.split('\n');
+    // Header is line 0
+    if (lines.length < 2) return;
+    
+    // Parse header to find 'Symbol' and 'Company Name'
+    const headers = lines[0].split(',').map(h => h.trim().toUpperCase());
+    const symIdx = headers.indexOf('SYMBOL');
+    const nameIdx = headers.indexOf('COMPANY NAME');
+
+    if (symIdx === -1 || nameIdx === -1) return;
+
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        const cols = line.split(',');
+        if (cols.length > Math.max(symIdx, nameIdx)) {
+             const sym = cols[symIdx].trim();
+             const name = cols[nameIdx].trim();
+             if (sym && name) {
+                 NAME_CACHE.set(sym, name);
+             }
+        }
+    }
+};
+
+export const getCompanyName = (symbol: string): string => {
+    if (!NAME_CACHE) initNameCache();
+    // Try exact match
+    if (NAME_CACHE?.has(symbol)) return NAME_CACHE.get(symbol)!;
+    
+    // Try common commodities
+    if (STATIC_MCX_LIST.includes(symbol)) return `${symbol} Futures (MCX)`;
+    if (STATIC_FOREX_LIST.includes(symbol)) return `${symbol.substring(0,3)}/${symbol.substring(3)} Forex`;
+    if (STATIC_CRYPTO_LIST.includes(symbol)) return `${symbol} Crypto`;
+    
+    return symbol; // Fallback to symbol if not found
+};
+
 // Helper to parse CSV dynamically based on header
 const parseCSV = (text: string): string[] => {
     const lines = text.split('\n');

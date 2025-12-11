@@ -27,6 +27,7 @@ export interface StockRecommendation {
   targetPrice: number;
   lotSize: number;
   timeframe?: 'INTRADAY' | 'BTST' | 'WEEKLY' | 'MONTHLY';
+  chartPattern?: string; // New field for AI Chart Analysis
 }
 
 export interface HoldingAnalysis {

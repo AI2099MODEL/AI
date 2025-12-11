@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { fetchTopStockPicks, analyzeHoldings } from './services/geminiService';
 import { checkAndRefreshStockList } from './services/stockListService';
+import { fetchRealStockData } from './services/marketDataService';
 import { StockRecommendation, PortfolioItem, MarketData, Transaction, AppSettings, UserProfile, Funds, HoldingAnalysis } from './types';
 import { AuthOverlay } from './components/AuthOverlay';
 import { TradeModal } from './components/TradeModal';
@@ -12,7 +13,7 @@ import { BarChart3, AlertCircle } from 'lucide-react';
 // NEW PAGE COMPONENTS
 import { BottomNav } from './components/BottomNav';
 import { PageMarket } from './components/PageMarket';
-import { PageCrypto } from './components/PageCrypto';
+import { PageAutoTrade } from './components/PageAutoTrade';
 import { PagePaperPNL } from './components/PagePaperPNL';
 import { PageLivePNL } from './components/PageLivePNL';
 import { PageConfiguration } from './components/PageConfiguration';
@@ -206,9 +207,6 @@ export default function App() {
         setNiftyList(stocksList);
     }
     
-    // Only fetch new picks if we have none or it's been a long time (handled inside service usually or manual refresh)
-    // For auto-refresh, we mainly update prices of EXISTING items + recommendations
-    
     let currentRecs = recommendations;
     if (recommendations.length === 0) {
         const totalCap = settings.initialFunds.stock + settings.initialFunds.mcx + settings.initialFunds.forex + settings.initialFunds.crypto;
@@ -216,39 +214,41 @@ export default function App() {
         setRecommendations(currentRecs);
     }
     
-    const initialMarketData: MarketData = { ...marketData };
+    const nextMarketData: MarketData = { ...marketData };
     const symbols = new Set([...currentRecs.map(s => s.symbol), ...allHoldings.map(p => p.symbol)]);
     
-    // In a real app, this loop would be a single batch API call
-    for (const sym of symbols) {
-         // Simulate price update
-         const rec = currentRecs.find(s => s.symbol === sym);
-         const port = allHoldings.find(p => p.symbol === sym);
-         const oldPrice = initialMarketData[sym]?.price || (rec ? rec.currentPrice : (port ? port.avgCost : 100));
+    // Batch fetch simulated by parallel requests
+    await Promise.all(Array.from(symbols).map(async (sym) => {
+         const realData = await fetchRealStockData(sym, settings);
          
-         // Random walk for auto-refresh simulation
-         const change = (Math.random() - 0.5) * (oldPrice * 0.002); 
-         const newPrice = oldPrice + change;
-         
-         const history = initialMarketData[sym]?.history || generateFallbackHistory(newPrice, 50);
-         // Update last candle
-         const lastCandle = history[history.length - 1];
-         lastCandle.close = newPrice;
-         lastCandle.high = Math.max(lastCandle.high, newPrice);
-         lastCandle.low = Math.min(lastCandle.low, newPrice);
+         if (realData) {
+             nextMarketData[sym] = realData;
+         } else {
+             // If Fetch Failed (Offline/Limit), use Simulation logic as absolute fallback
+             const rec = currentRecs.find(s => s.symbol === sym);
+             const port = allHoldings.find(p => p.symbol === sym);
+             const oldPrice = marketData[sym]?.price || (rec ? rec.currentPrice : (port ? port.avgCost : 100));
+             
+             // Minimal simulation if offline
+             const change = (Math.random() - 0.5) * (oldPrice * 0.001); 
+             const newPrice = oldPrice + change;
+             
+             const history = marketData[sym]?.history || generateFallbackHistory(newPrice, 50);
+             const lastCandle = history[history.length - 1];
+             lastCandle.close = newPrice;
+             
+             nextMarketData[sym] = { 
+                 price: newPrice, 
+                 change: newPrice - (history[0]?.open || newPrice), 
+                 changePercent: ((newPrice - (history[0]?.open || newPrice)) / (history[0]?.open || newPrice)) * 100, 
+                 history, 
+                 technicals: analyzeStockTechnical(history) 
+             };
+         }
+    }));
 
-         initialMarketData[sym] = { 
-             price: newPrice, 
-             change: newPrice - (history[0]?.open || newPrice), 
-             changePercent: ((newPrice - (history[0]?.open || newPrice)) / (history[0]?.open || newPrice)) * 100, 
-             history, 
-             technicals: analyzeStockTechnical(history) 
-         };
-    }
-    setMarketData(initialMarketData);
+    setMarketData(nextMarketData);
     setIsLoading(false);
-    
-    // Update timestamp for "24/7" tracking
     localStorage.setItem(STORAGE_KEYS.LAST_RUN, Date.now().toString());
 
   }, [settings, allHoldings, niftyList, user, marketData, recommendations]);
@@ -388,13 +388,10 @@ export default function App() {
             />
         )}
         {activePage === 1 && (
-            <PageCrypto 
-                recommendations={recommendations} 
-                marketData={marketData} 
-                onTrade={(s) => { setSelectedStock(s); setIsTradeModalOpen(true); }}
-                onRefresh={() => loadMarketData()}
-                isLoading={isLoading}
-                enabledMarkets={settings.enabledMarkets}
+            <PageAutoTrade
+                activeBots={activeBots}
+                onToggleBot={(b) => setActiveBots(p => ({...p, [b]: !p[b]}))}
+                transactions={transactions}
             />
         )}
         {activePage === 2 && (
