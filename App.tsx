@@ -197,16 +197,24 @@ export default function App() {
      }
   }, [user, syncExternalPortfolios]);
 
+  // Optimized load function that doesn't depend on marketData state
   const loadMarketData = useCallback(async () => {
     if (!user) return;
-    setIsLoading(prev => Object.keys(marketData).length === 0 ? true : prev); // Only load full screen first time
     
+    // Only set loading on first empty load
+    setMarketData(current => {
+       if (Object.keys(current).length === 0) setIsLoading(true);
+       return current;
+    });
+
+    // 1. Ensure Stock List
     let stocksList = niftyList;
     if (stocksList.length === 0) {
         stocksList = await checkAndRefreshStockList();
         setNiftyList(stocksList);
     }
     
+    // 2. Ensure Recommendations
     let currentRecs = recommendations;
     if (recommendations.length === 0) {
         const totalCap = settings.initialFunds.stock + settings.initialFunds.mcx + settings.initialFunds.forex + settings.initialFunds.crypto;
@@ -214,44 +222,54 @@ export default function App() {
         setRecommendations(currentRecs);
     }
     
-    const nextMarketData: MarketData = { ...marketData };
+    // 3. Collect all symbols to fetch
     const symbols = new Set([...currentRecs.map(s => s.symbol), ...allHoldings.map(p => p.symbol)]);
     
-    // Batch fetch simulated by parallel requests
-    await Promise.all(Array.from(symbols).map(async (sym) => {
+    // 4. Batch fetch data
+    const fetchPromises = Array.from(symbols).map(async (sym) => {
          const realData = await fetchRealStockData(sym, settings);
-         
-         if (realData) {
-             nextMarketData[sym] = realData;
-         } else {
-             // If Fetch Failed (Offline/Limit), use Simulation logic as absolute fallback
-             const rec = currentRecs.find(s => s.symbol === sym);
-             const port = allHoldings.find(p => p.symbol === sym);
-             const oldPrice = marketData[sym]?.price || (rec ? rec.currentPrice : (port ? port.avgCost : 100));
-             
-             // Minimal simulation if offline
-             const change = (Math.random() - 0.5) * (oldPrice * 0.001); 
-             const newPrice = oldPrice + change;
-             
-             const history = marketData[sym]?.history || generateFallbackHistory(newPrice, 50);
-             const lastCandle = history[history.length - 1];
-             lastCandle.close = newPrice;
-             
-             nextMarketData[sym] = { 
-                 price: newPrice, 
-                 change: newPrice - (history[0]?.open || newPrice), 
-                 changePercent: ((newPrice - (history[0]?.open || newPrice)) / (history[0]?.open || newPrice)) * 100, 
-                 history, 
-                 technicals: analyzeStockTechnical(history) 
-             };
-         }
-    }));
+         return { symbol: sym, data: realData };
+    });
 
-    setMarketData(nextMarketData);
+    const results = await Promise.all(fetchPromises);
+
+    // 5. Update State Functionally
+    setMarketData(prevMarketData => {
+         const nextMarketData = { ...prevMarketData };
+         
+         results.forEach(({ symbol, data }) => {
+             if (data) {
+                 nextMarketData[symbol] = data;
+             } else {
+                 // Fallback simulation only if no data exists or network failure
+                 const rec = currentRecs.find(s => s.symbol === symbol);
+                 const port = allHoldings.find(p => p.symbol === symbol);
+                 const oldPrice = prevMarketData[symbol]?.price || (rec ? rec.currentPrice : (port ? port.avgCost : 100));
+                 
+                 // Minimal noise for alive feel if offline
+                 const change = (Math.random() - 0.5) * (oldPrice * 0.001); 
+                 const newPrice = oldPrice + change;
+                 
+                 const history = prevMarketData[symbol]?.history || generateFallbackHistory(newPrice, 50);
+                 const lastCandle = { ...history[history.length - 1] };
+                 lastCandle.close = newPrice;
+                 
+                 nextMarketData[symbol] = { 
+                     price: newPrice, 
+                     change: newPrice - (history[0]?.open || newPrice), 
+                     changePercent: ((newPrice - (history[0]?.open || newPrice)) / (history[0]?.open || newPrice)) * 100, 
+                     history, 
+                     technicals: analyzeStockTechnical(history) 
+                 };
+             }
+         });
+         return nextMarketData;
+    });
+
     setIsLoading(false);
     localStorage.setItem(STORAGE_KEYS.LAST_RUN, Date.now().toString());
 
-  }, [settings, allHoldings, niftyList, user, marketData, recommendations]);
+  }, [settings, allHoldings, niftyList, user, recommendations]); 
 
   // Initial Load
   useEffect(() => { loadMarketData(); }, [user]);
@@ -262,7 +280,7 @@ export default function App() {
       if (user) {
           refreshIntervalRef.current = setInterval(() => {
               loadMarketData();
-          }, 10000); // 10 seconds refresh
+          }, 15000); // 15 seconds refresh as requested
       }
       return () => { if (refreshIntervalRef.current) clearInterval(refreshIntervalRef.current); };
   }, [user, loadMarketData]);
@@ -272,6 +290,8 @@ export default function App() {
       if (botIntervalRef.current) clearInterval(botIntervalRef.current);
       if (user && activeBots['PAPER']) {
           botIntervalRef.current = setInterval(() => {
+              // We use a ref or state wrapper to access latest marketData inside interval if needed, 
+              // but here we pass the state directly. Note: This effect resets when marketData changes.
               const results = runAutoTradeEngine(settings, paperPortfolio, marketData, funds, recommendations);
               if (results.length > 0) {
                   const newTxs: Transaction[] = [];
@@ -292,7 +312,6 @@ export default function App() {
                                   broker: 'PAPER'
                               });
                           } else {
-                              // Handle Sell logic for auto-bot if needed (simplified)
                               updatedFunds.stock += (res.transaction.price * res.transaction.quantity);
                               updatedPortfolio = updatedPortfolio.filter(p => p.symbol !== res.transaction?.symbol);
                           }
