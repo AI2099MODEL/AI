@@ -1,6 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { StockRecommendation, MarketSettings, PortfolioItem, HoldingAnalysis, MarketData } from "../types";
-import { getCompanyName } from "./stockListService";
 
 let aiInstance: GoogleGenAI | null = null;
 
@@ -34,6 +33,7 @@ export const fetchTopStockPicks = async (
 
     const requests: string[] = [];
     
+    // We pass the universe for context, but we will ask the AI to be precise with symbols
     const availableStocks = stockUniverse.length > 0 ? stockUniverse.join(', ') : "Top Liquid NSE Stocks";
 
     if (markets.stocks) {
@@ -58,7 +58,7 @@ export const fetchTopStockPicks = async (
     For each pick, identify a specific 'Chart Pattern' (e.g., Bull Flag, Cup & Handle, Double Bottom, Ascending Triangle).
     
     IMPORTANT JSON RULES:
-    1. Output ONLY the ticker symbol in 'symbol' field.
+    1. Output ONLY the official ticker symbol in 'symbol' field (e.g. TATAMOTORS, RELIANCE).
     2. Assign 'type' correctly ('STOCK', 'MCX', 'FOREX', 'CRYPTO').
     3. For MCX/Forex, provide lot size.
     4. For Stocks, explicitly set 'timeframe' to 'INTRADAY', 'BTST', 'WEEKLY', or 'MONTHLY'.
@@ -98,10 +98,12 @@ export const fetchTopStockPicks = async (
     let data: StockRecommendation[] = [];
     if (response.text) {
         data = JSON.parse(response.text) as StockRecommendation[];
-        // Post-process names using official CSV data
+        // FORCE SYMBOL AS NAME FOR STOCKS to avoid confusion
         data = data.map(item => ({
             ...item,
-            name: item.type === 'STOCK' ? getCompanyName(item.symbol) : item.name
+            name: item.type === 'STOCK' ? item.symbol : item.name,
+            // Ensure symbol is uppercase
+            symbol: item.symbol.toUpperCase()
         }));
     }
     return data;
@@ -112,11 +114,11 @@ export const fetchTopStockPicks = async (
     // Fallback Logic
     const fallback: StockRecommendation[] = [];
     if (markets.stocks) {
-        fallback.push({ symbol: "ADANIENT", name: getCompanyName("ADANIENT"), type: "STOCK", sector: "Metals", currentPrice: 2450, reason: "Volume Spurt", riskLevel: "High", targetPrice: 2500, lotSize: 1, timeframe: "INTRADAY", chartPattern: "Breakout" });
-        fallback.push({ symbol: "TATAMOTORS", name: getCompanyName("TATAMOTORS"), type: "STOCK", sector: "Auto", currentPrice: 980, reason: "Breakout", riskLevel: "Medium", targetPrice: 1020, lotSize: 1, timeframe: "BTST", chartPattern: "Bull Flag" });
-        fallback.push({ symbol: "SBIN", name: getCompanyName("SBIN"), type: "STOCK", sector: "Bank", currentPrice: 780, reason: "Support Bounce", riskLevel: "Low", targetPrice: 800, lotSize: 1, timeframe: "BTST", chartPattern: "Double Bottom" });
-        fallback.push({ symbol: "RELIANCE", name: getCompanyName("RELIANCE"), type: "STOCK", sector: "Energy", currentPrice: 2800, reason: "Consolidation", riskLevel: "Medium", targetPrice: 2900, lotSize: 1, timeframe: "WEEKLY", chartPattern: "Ascending Triangle" });
-        fallback.push({ symbol: "ITC", name: getCompanyName("ITC"), type: "STOCK", sector: "FMCG", currentPrice: 420, reason: "Defensive", riskLevel: "Low", targetPrice: 450, lotSize: 1, timeframe: "MONTHLY", chartPattern: "Channel Up" });
+        fallback.push({ symbol: "ADANIENT", name: "ADANIENT", type: "STOCK", sector: "Metals", currentPrice: 2450, reason: "Volume Spurt", riskLevel: "High", targetPrice: 2500, lotSize: 1, timeframe: "INTRADAY", chartPattern: "Breakout" });
+        fallback.push({ symbol: "TATAMOTORS", name: "TATAMOTORS", type: "STOCK", sector: "Auto", currentPrice: 980, reason: "Breakout", riskLevel: "Medium", targetPrice: 1020, lotSize: 1, timeframe: "BTST", chartPattern: "Bull Flag" });
+        fallback.push({ symbol: "SBIN", name: "SBIN", type: "STOCK", sector: "Bank", currentPrice: 780, reason: "Support Bounce", riskLevel: "Low", targetPrice: 800, lotSize: 1, timeframe: "BTST", chartPattern: "Double Bottom" });
+        fallback.push({ symbol: "RELIANCE", name: "RELIANCE", type: "STOCK", sector: "Energy", currentPrice: 2800, reason: "Consolidation", riskLevel: "Medium", targetPrice: 2900, lotSize: 1, timeframe: "WEEKLY", chartPattern: "Ascending Triangle" });
+        fallback.push({ symbol: "ITC", name: "ITC", type: "STOCK", sector: "FMCG", currentPrice: 420, reason: "Defensive", riskLevel: "Low", targetPrice: 450, lotSize: 1, timeframe: "MONTHLY", chartPattern: "Channel Up" });
     }
     if (markets.mcx) fallback.push({ symbol: "GOLD", name: "Gold Futures (MCX)", type: "MCX", sector: "Commodity", currentPrice: 72000, reason: "Safe Haven", riskLevel: "Low", targetPrice: 72500, lotSize: 1, timeframe: "INTRADAY", chartPattern: "Cup and Handle" });
     if (markets.crypto) fallback.push({ symbol: "BTC", name: "Bitcoin", type: "CRYPTO", sector: "Digital", currentPrice: 65000, reason: "ETF Inflow", riskLevel: "High", targetPrice: 66000, lotSize: 0.01, timeframe: "INTRADAY", chartPattern: "Golden Cross" });

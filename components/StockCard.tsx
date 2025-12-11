@@ -62,7 +62,10 @@ export const StockCard: React.FC<StockCardProps> = ({ stock, marketData, onTrade
                 </span>
             )}
           </h3>
-          <p className="text-xs text-slate-400">{stock.name}</p>
+          {/* Only show name if it's different from Symbol (e.g. for Crypto names like Bitcoin) */}
+          {stock.name !== stock.symbol && (
+              <p className="text-xs text-slate-400">{stock.name}</p>
+          )}
         </div>
       </div>
 

@@ -1,9 +1,6 @@
 import { Candle, StockData, TechnicalSignals, AppSettings, AssetType } from "../types";
 import { analyzeStockTechnical } from "./technicalAnalysis";
 
-// CORS Proxy for Yahoo Finance
-// Alternative proxies: 'https://corsproxy.io/?', 'https://api.allorigins.win/raw?url='
-const PROXY_URL = "https://corsproxy.io/?";
 const YAHOO_CHART_BASE = "https://query1.finance.yahoo.com/v8/finance/chart/";
 
 // Mapping Indian MCX symbols to Global Futures/Proxies for data simulation
@@ -33,41 +30,45 @@ const TICKER_MAP: { [key: string]: string } = {
     'BNB': 'BNB-USD',
     'XRP': 'XRP-USD',
     'ADA': 'ADA-USD',
-    'ARP': 'XRP-USD', // Handling user typo mapping
-    'XDA': 'ADA-USD'  // Handling user typo mapping
+    'DOGE': 'DOGE-USD',
+    'SHIB': 'SHIB-USD'
 };
 
 // --- API FETCHERS ---
 
-// 1. Yahoo Finance (Primary Free Source)
-async function fetchYahooData(ticker: string, interval: string = '5m', range: string = '5d'): Promise<any> {
-    const targetUrl = `${YAHOO_CHART_BASE}${ticker}?interval=${interval}&range=${range}`;
-    const finalUrl = `${PROXY_URL}${encodeURIComponent(targetUrl)}`; 
-    
-    try {
-        const response = await fetch(finalUrl);
-        if (!response.ok) return null;
-        return await response.json();
-    } catch (e) {
-        // Fallback to AllOrigins if CORSProxy fails
+async function fetchWithProxy(targetUrl: string): Promise<any> {
+    const proxies = [
+        // Primary: CORSProxy.io (Fast)
+        (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+        // Fallback 1: AllOrigins (Reliable JSON)
+        (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+        // Fallback 2: Cors Anywhere demo (Last resort)
+        (url: string) => `https://cors-anywhere.herokuapp.com/${url}` 
+    ];
+
+    for (const proxy of proxies) {
         try {
-             const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
-             const res = await fetch(fallbackUrl);
-             if(!res.ok) return null;
-             return await res.json();
-        } catch(err) {
-            return null;
+            const finalUrl = proxy(targetUrl);
+            const response = await fetch(finalUrl);
+            if (response.ok) {
+                return await response.json();
+            }
+        } catch (e) {
+            // Try next proxy
+            continue;
         }
     }
+    return null;
+}
+
+async function fetchYahooData(ticker: string, interval: string = '5m', range: string = '5d'): Promise<any> {
+    const targetUrl = `${YAHOO_CHART_BASE}${ticker}?interval=${interval}&range=${range}`;
+    return await fetchWithProxy(targetUrl);
 }
 
 // 2. Dhan API Stub (Placeholder for Real Implementation)
 async function fetchDhanData(symbol: string, settings: AppSettings): Promise<StockData | null> {
     if (!settings.dhanClientId || !settings.dhanAccessToken) return null;
-    
-    // NOTE: Direct client-side calls to Dhan API usually require a backend proxy due to CORS 
-    // and security of secrets. This is a structural placeholder.
-    // In a production app, you would call `your-backend.com/api/dhan/quote/${symbol}`
     return null; 
 }
 
@@ -124,8 +125,6 @@ async function parseYahooResponse(symbol: string, data: any): Promise<StockData 
 export const fetchRealStockData = async (symbol: string, settings: AppSettings): Promise<StockData | null> => {
     
     // 1. Try Broker APIs first if configured (Dhan/Shoonya)
-    // In this demo, these return null effectively skipping to Yahoo, 
-    // but the structure supports real implementation.
     let data = await fetchDhanData(symbol, settings);
     if (data) return data;
 
@@ -133,11 +132,12 @@ export const fetchRealStockData = async (symbol: string, settings: AppSettings):
     if (data) return data;
 
     // 2. Try Yahoo Finance (Primary Public Source)
-    // Resolve mapped ticker (e.g., GOLD -> GC=F) or default to NSE (RELIANCE -> RELIANCE.NS)
-    let ticker = TICKER_MAP[symbol];
+    let ticker = TICKER_MAP[symbol.toUpperCase()];
     if (!ticker) {
-        // Assume Stock if not in map
-        ticker = symbol.toUpperCase().endsWith('.NS') ? symbol.toUpperCase() : `${symbol.toUpperCase()}.NS`;
+        // Assume Indian Stock if not in map
+        // Ensure no double extension and prioritize NSE
+        const cleanSymbol = symbol.toUpperCase().replace('.NS', '').replace('.BO', '');
+        ticker = `${cleanSymbol}.NS`;
     }
 
     const yahooRaw = await fetchYahooData(ticker);
@@ -146,6 +146,16 @@ export const fetchRealStockData = async (symbol: string, settings: AppSettings):
         if (parsed) return parsed;
     }
 
-    // 3. Fail gracefully (Caller handles fallback/mocking)
+    // 3. Fallback: If NSE fails, try BSE for stocks
+    if (symbol.toUpperCase().indexOf('.') === -1 && !TICKER_MAP[symbol.toUpperCase()]) {
+         const bseTicker = `${symbol.toUpperCase()}.BO`;
+         const bseRaw = await fetchYahooData(bseTicker);
+         if (bseRaw) {
+             const parsed = await parseYahooResponse(symbol, bseRaw);
+             if (parsed) return parsed;
+         }
+    }
+
+    // 4. Fail gracefully 
     return null;
 };
