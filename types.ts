@@ -129,7 +129,9 @@ export interface AppSettings {
   dhanClientId?: string;
   dhanAccessToken?: string;
   shoonyaUserId?: string;
-  shoonyaPassword?: string;
+  shoonyaPassword?: string; // Kept for legacy/sim
+  shoonyaApiKey?: string;   // For real auth
+  shoonyaVendorCode?: string; // For real auth
   growwApiKey?: string; // Mock
   // Crypto Exchanges
   binanceApiKey?: string;

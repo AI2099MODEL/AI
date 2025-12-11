@@ -90,7 +90,6 @@ export const PageConfiguration: React.FC<PageConfigurationProps> = ({ settings, 
                                     <input type="number" value={formData.initialFunds.stock} onChange={(e) => setFormData({...formData, initialFunds: {...formData.initialFunds, stock: parseFloat(e.target.value)}})} className="w-full bg-slate-900 border border-slate-700 rounded-lg py-2.5 pl-9 pr-4 text-white focus:border-blue-500 outline-none text-sm font-mono"/>
                                 </div>
                             </div>
-                            {/* ...other fund inputs... */}
                         </div>
                     </section>
                      <button onClick={handleReset} className="w-full py-4 rounded-xl text-xs font-bold text-red-400 bg-red-900/10 border border-red-900/30 flex items-center justify-center gap-2">
@@ -131,13 +130,6 @@ export const PageConfiguration: React.FC<PageConfigurationProps> = ({ settings, 
                             ))}
                         </div>
                     </section>
-
-                    <section>
-                        <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-4">Activity Log</h3>
-                        <div className="h-64">
-                             <ActivityFeed transactions={transactions} />
-                        </div>
-                    </section>
                 </div>
             )}
 
@@ -168,19 +160,54 @@ export const PageConfiguration: React.FC<PageConfigurationProps> = ({ settings, 
             {/* === BROKERS TAB (Expanded List) === */}
             {activeSubTab === 'BROKERS' && (
                 <div className="space-y-4 animate-slide-up">
-                    {['PAPER', 'DHAN', 'GROWW', 'SHOONYA', 'BINANCE', 'COINDCX', 'COINSWITCH', 'ZEBPAY'].map(broker => (
-                         <div key={broker} className={`p-4 rounded-xl border ${formData.activeBrokers.includes(broker as any) ? 'bg-surface border-green-500/30' : 'bg-slate-900/50 border-slate-800'}`}>
-                             <div className="flex justify-between items-center mb-2">
-                                 <h4 className="font-bold text-white text-sm">{broker}</h4>
-                                 <button onClick={() => toggleBroker(broker)} className={`w-8 h-4 rounded-full relative transition-colors ${formData.activeBrokers.includes(broker as any) ? 'bg-green-500' : 'bg-slate-600'}`}>
-                                     <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${formData.activeBrokers.includes(broker as any) ? 'left-4.5' : 'left-0.5'}`}></div>
-                                 </button>
-                             </div>
-                             {formData.activeBrokers.includes(broker as any) && broker !== 'PAPER' && (
-                                 <input type="password" placeholder="API Key / Token" className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white mt-2"/>
-                             )}
+                    <div className="bg-blue-900/10 border border-blue-500/20 p-4 rounded-xl flex items-start gap-3">
+                        <Key size={18} className="text-blue-400 flex-shrink-0 mt-0.5"/>
+                        <p className="text-xs text-blue-200">
+                            <strong>Secure Connection:</strong> Credentials are stored locally.
+                        </p>
+                    </div>
+
+                    {/* DHAN */}
+                    <div className={`p-4 rounded-xl border ${formData.activeBrokers.includes('DHAN') ? 'bg-surface border-purple-500/50' : 'bg-slate-900/50 border-slate-800'}`}>
+                         <div className="flex justify-between items-center mb-2">
+                             <h4 className="font-bold text-white text-sm">Dhan</h4>
+                             <button onClick={() => toggleBroker('DHAN')} className={`w-8 h-4 rounded-full relative transition-colors ${formData.activeBrokers.includes('DHAN') ? 'bg-green-500' : 'bg-slate-600'}`}>
+                                 <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${formData.activeBrokers.includes('DHAN') ? 'left-4.5' : 'left-0.5'}`}></div>
+                             </button>
                          </div>
-                    ))}
+                         {formData.activeBrokers.includes('DHAN') && (
+                             <div className="space-y-2 mt-2">
+                                <input type="text" placeholder="Client ID" value={formData.dhanClientId || ''} onChange={(e) => setFormData({...formData, dhanClientId: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white"/>
+                                <input type="password" placeholder="Access Token" value={formData.dhanAccessToken || ''} onChange={(e) => setFormData({...formData, dhanAccessToken: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white"/>
+                             </div>
+                         )}
+                    </div>
+
+                    {/* SHOONYA */}
+                     <div className={`p-4 rounded-xl border ${formData.activeBrokers.includes('SHOONYA') ? 'bg-surface border-orange-500/50' : 'bg-slate-900/50 border-slate-800'}`}>
+                         <div className="flex justify-between items-center mb-2">
+                             <h4 className="font-bold text-white text-sm">Shoonya</h4>
+                             <button onClick={() => toggleBroker('SHOONYA')} className={`w-8 h-4 rounded-full relative transition-colors ${formData.activeBrokers.includes('SHOONYA') ? 'bg-green-500' : 'bg-slate-600'}`}>
+                                 <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${formData.activeBrokers.includes('SHOONYA') ? 'left-4.5' : 'left-0.5'}`}></div>
+                             </button>
+                         </div>
+                         {formData.activeBrokers.includes('SHOONYA') && (
+                             <div className="space-y-2 mt-2">
+                                <input type="text" placeholder="User ID" value={formData.shoonyaUserId || ''} onChange={(e) => setFormData({...formData, shoonyaUserId: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white"/>
+                                <input type="password" placeholder="Password" value={formData.shoonyaPassword || ''} onChange={(e) => setFormData({...formData, shoonyaPassword: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white"/>
+                                <input type="text" placeholder="Vendor Code" value={formData.shoonyaVendorCode || ''} onChange={(e) => setFormData({...formData, shoonyaVendorCode: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white"/>
+                                <input type="password" placeholder="API Key" value={formData.shoonyaApiKey || ''} onChange={(e) => setFormData({...formData, shoonyaApiKey: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white"/>
+                             </div>
+                         )}
+                    </div>
+
+                    {/* PAPER */}
+                    <div className={`p-4 rounded-xl border bg-surface border-green-500/50`}>
+                         <div className="flex justify-between items-center">
+                             <h4 className="font-bold text-white text-sm">Paper Trading</h4>
+                             <div className="px-2 py-0.5 rounded bg-green-900 text-green-400 text-[10px]">Active</div>
+                         </div>
+                    </div>
                 </div>
             )}
 

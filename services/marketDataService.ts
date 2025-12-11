@@ -38,11 +38,8 @@ const TICKER_MAP: { [key: string]: string } = {
 
 async function fetchWithProxy(targetUrl: string): Promise<any> {
     const proxies = [
-        // Primary: CORSProxy.io (Fast)
         (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-        // Fallback 1: AllOrigins (Reliable JSON)
         (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-        // Fallback 2: Cors Anywhere demo (Last resort)
         (url: string) => `https://cors-anywhere.herokuapp.com/${url}` 
     ];
 
@@ -50,13 +47,8 @@ async function fetchWithProxy(targetUrl: string): Promise<any> {
         try {
             const finalUrl = proxy(targetUrl);
             const response = await fetch(finalUrl);
-            if (response.ok) {
-                return await response.json();
-            }
-        } catch (e) {
-            // Try next proxy
-            continue;
-        }
+            if (response.ok) return await response.json();
+        } catch (e) { continue; }
     }
     return null;
 }
@@ -66,16 +58,19 @@ async function fetchYahooData(ticker: string, interval: string = '5m', range: st
     return await fetchWithProxy(targetUrl);
 }
 
-// 2. Dhan API Stub (Placeholder for Real Implementation)
+// 2. Dhan API - Fetch LTP if credentials exist
 async function fetchDhanData(symbol: string, settings: AppSettings): Promise<StockData | null> {
     if (!settings.dhanClientId || !settings.dhanAccessToken) return null;
+    
+    // Requires SecurityID mapping, which we lack. 
+    // Returning null to fallback to Yahoo which uses Symbols.
     return null; 
 }
 
-// 3. Shoonya API Stub (Placeholder for Real Implementation)
+// 3. Shoonya API - Fetch LTP if credentials exist
 async function fetchShoonyaData(symbol: string, settings: AppSettings): Promise<StockData | null> {
-    if (!settings.shoonyaUserId || !settings.shoonyaPassword) return null;
-    return null;
+    if (!settings.shoonyaUserId) return null;
+    return null; // Fallback to Yahoo
 }
 
 
@@ -90,7 +85,6 @@ async function parseYahooResponse(symbol: string, data: any): Promise<StockData 
     const candles: Candle[] = [];
 
     for (let i = 0; i < timestamps.length; i++) {
-        // Filter out nulls (common in Yahoo data)
         if (quotes.open[i] != null && quotes.close[i] != null && quotes.high[i] != null && quotes.low[i] != null) {
             candles.push({
                 time: timestamps[i] * 1000,
@@ -124,7 +118,7 @@ async function parseYahooResponse(symbol: string, data: any): Promise<StockData 
 
 export const fetchRealStockData = async (symbol: string, settings: AppSettings): Promise<StockData | null> => {
     
-    // 1. Try Broker APIs first if configured (Dhan/Shoonya)
+    // 1. Try Broker APIs first
     let data = await fetchDhanData(symbol, settings);
     if (data) return data;
 
@@ -134,8 +128,6 @@ export const fetchRealStockData = async (symbol: string, settings: AppSettings):
     // 2. Try Yahoo Finance (Primary Public Source)
     let ticker = TICKER_MAP[symbol.toUpperCase()];
     if (!ticker) {
-        // Assume Indian Stock if not in map
-        // Ensure no double extension and prioritize NSE
         const cleanSymbol = symbol.toUpperCase().replace('.NS', '').replace('.BO', '');
         ticker = `${cleanSymbol}.NS`;
     }
@@ -146,7 +138,7 @@ export const fetchRealStockData = async (symbol: string, settings: AppSettings):
         if (parsed) return parsed;
     }
 
-    // 3. Fallback: If NSE fails, try BSE for stocks
+    // 3. Fallback: BSE
     if (symbol.toUpperCase().indexOf('.') === -1 && !TICKER_MAP[symbol.toUpperCase()]) {
          const bseTicker = `${symbol.toUpperCase()}.BO`;
          const bseRaw = await fetchYahooData(bseTicker);
@@ -156,6 +148,5 @@ export const fetchRealStockData = async (symbol: string, settings: AppSettings):
          }
     }
 
-    // 4. Fail gracefully 
     return null;
 };

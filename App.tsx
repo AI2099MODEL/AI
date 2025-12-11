@@ -13,8 +13,7 @@ import { BarChart3, AlertCircle } from 'lucide-react';
 // NEW PAGE COMPONENTS
 import { BottomNav } from './components/BottomNav';
 import { PageMarket } from './components/PageMarket';
-import { PageAutoTrade } from './components/PageAutoTrade';
-import { PagePaperPNL } from './components/PagePaperPNL';
+import { PagePaperTrading } from './components/PagePaperTrading'; // Merged Page
 import { PageLivePNL } from './components/PageLivePNL';
 import { PageConfiguration } from './components/PageConfiguration';
 
@@ -113,7 +112,6 @@ export default function App() {
   const [tradeModalBroker, setTradeModalBroker] = useState<string | undefined>(undefined);
   const [niftyList, setNiftyList] = useState<string[]>([]);
 
-  // Refs for intervals to clear them properly
   const refreshIntervalRef = useRef<any>(null);
   const botIntervalRef = useRef<any>(null);
 
@@ -121,13 +119,11 @@ export default function App() {
 
   useEffect(() => { setTimeout(() => setShowSplash(false), 2000); }, []);
   
-  // Persist State
   useEffect(() => localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings)), [settings]);
   useEffect(() => localStorage.setItem(STORAGE_KEYS.FUNDS, JSON.stringify(funds)), [funds]);
   useEffect(() => localStorage.setItem(STORAGE_KEYS.PORTFOLIO, JSON.stringify(paperPortfolio)), [paperPortfolio]);
   useEffect(() => localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions)), [transactions]);
 
-  // Simulate Background Trading on Load (Catch-up)
   useEffect(() => {
       const lastRun = localStorage.getItem(STORAGE_KEYS.LAST_RUN);
       if (lastRun && activeBots['PAPER']) {
@@ -197,24 +193,20 @@ export default function App() {
      }
   }, [user, syncExternalPortfolios]);
 
-  // Optimized load function that doesn't depend on marketData state
   const loadMarketData = useCallback(async () => {
     if (!user) return;
     
-    // Only set loading on first empty load
     setMarketData(current => {
        if (Object.keys(current).length === 0) setIsLoading(true);
        return current;
     });
 
-    // 1. Ensure Stock List
     let stocksList = niftyList;
     if (stocksList.length === 0) {
         stocksList = await checkAndRefreshStockList();
         setNiftyList(stocksList);
     }
     
-    // 2. Ensure Recommendations
     let currentRecs = recommendations;
     if (recommendations.length === 0) {
         const totalCap = settings.initialFunds.stock + settings.initialFunds.mcx + settings.initialFunds.forex + settings.initialFunds.crypto;
@@ -222,10 +214,8 @@ export default function App() {
         setRecommendations(currentRecs);
     }
     
-    // 3. Collect all symbols to fetch
     const symbols = new Set([...currentRecs.map(s => s.symbol), ...allHoldings.map(p => p.symbol)]);
     
-    // 4. Batch fetch data
     const fetchPromises = Array.from(symbols).map(async (sym) => {
          const realData = await fetchRealStockData(sym, settings);
          return { symbol: sym, data: realData };
@@ -233,7 +223,6 @@ export default function App() {
 
     const results = await Promise.all(fetchPromises);
 
-    // 5. Update State Functionally
     setMarketData(prevMarketData => {
          const nextMarketData = { ...prevMarketData };
          
@@ -241,12 +230,10 @@ export default function App() {
              if (data) {
                  nextMarketData[symbol] = data;
              } else {
-                 // Fallback simulation only if no data exists or network failure
                  const rec = currentRecs.find(s => s.symbol === symbol);
                  const port = allHoldings.find(p => p.symbol === symbol);
                  const oldPrice = prevMarketData[symbol]?.price || (rec ? rec.currentPrice : (port ? port.avgCost : 100));
                  
-                 // Minimal noise for alive feel if offline
                  const change = (Math.random() - 0.5) * (oldPrice * 0.001); 
                  const newPrice = oldPrice + change;
                  
@@ -271,27 +258,22 @@ export default function App() {
 
   }, [settings, allHoldings, niftyList, user, recommendations]); 
 
-  // Initial Load
   useEffect(() => { loadMarketData(); }, [user]);
 
-  // Auto-Refresh Interval (Prices)
   useEffect(() => {
       if (refreshIntervalRef.current) clearInterval(refreshIntervalRef.current);
       if (user) {
           refreshIntervalRef.current = setInterval(() => {
               loadMarketData();
-          }, 15000); // 15 seconds refresh as requested
+          }, 15000); 
       }
       return () => { if (refreshIntervalRef.current) clearInterval(refreshIntervalRef.current); };
   }, [user, loadMarketData]);
 
-  // Auto-Trade Bot Interval
   useEffect(() => {
       if (botIntervalRef.current) clearInterval(botIntervalRef.current);
       if (user && activeBots['PAPER']) {
           botIntervalRef.current = setInterval(() => {
-              // We use a ref or state wrapper to access latest marketData inside interval if needed, 
-              // but here we pass the state directly. Note: This effect resets when marketData changes.
               const results = runAutoTradeEngine(settings, paperPortfolio, marketData, funds, recommendations);
               if (results.length > 0) {
                   const newTxs: Transaction[] = [];
@@ -325,7 +307,7 @@ export default function App() {
                       showNotification(`Bot executed ${newTxs.length} trades`);
                   }
               }
-          }, 15000); // Check every 15s
+          }, 15000);
       }
       return () => { if (botIntervalRef.current) clearInterval(botIntervalRef.current); };
   }, [user, activeBots, settings, paperPortfolio, marketData, funds, recommendations]);
@@ -406,15 +388,9 @@ export default function App() {
                 enabledMarkets={settings.enabledMarkets}
             />
         )}
+        {/* Merged Paper & AutoBot Page */}
         {activePage === 1 && (
-            <PageAutoTrade
-                activeBots={activeBots}
-                onToggleBot={(b) => setActiveBots(p => ({...p, [b]: !p[b]}))}
-                transactions={transactions}
-            />
-        )}
-        {activePage === 2 && (
-            <PagePaperPNL 
+            <PagePaperTrading 
                 holdings={allHoldings} 
                 marketData={marketData}
                 analysisData={analysisData}
@@ -427,9 +403,12 @@ export default function App() {
                 onAnalyze={handleAnalysis}
                 isAnalyzing={isAnalyzing}
                 funds={funds}
+                activeBots={activeBots}
+                onToggleBot={(b) => setActiveBots(p => ({...p, [b]: !p[b]}))}
+                transactions={transactions}
             />
         )}
-        {activePage === 3 && (
+        {activePage === 2 && (
             <PageLivePNL 
                 holdings={allHoldings}
                 marketData={marketData}
@@ -443,7 +422,7 @@ export default function App() {
                 brokerBalances={brokerBalances}
             />
         )}
-        {activePage === 4 && (
+        {activePage === 3 && (
             <PageConfiguration 
                 settings={settings}
                 onSave={(s) => { setSettings(s); showNotification("Settings Saved"); }}
