@@ -115,8 +115,7 @@ export const fetchTopStockPicks = async (
     picks.push(...topBtst.map((s) => toRec(s, "BTST")));
     picks.push(...topWeekly.map((s) => toRec(s, "WEEKLY")));
     picks.push(...topMonthly.map((s) => toRec(s, "MONTHLY")));
-  } // <-- this is the ONLY closing brace for if (markets.stocks)
-
+  
   // No fallback: if nothing fetched, this returns []
   return picks;
 }; // <-- single final brace for the function
