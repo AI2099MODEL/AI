@@ -46,7 +46,7 @@ export const fetchTopStockPicks = async (
       // Shuffle to avoid alphabetical bias
       const shuffled = shuffle(universe);
       // Limit to avoid hammering Yahoo / yfinance
-      const sample = shuffled.slice(0, 80);
+      const sample = shuffled.slice(0, 100);
 
       const results: { symbol: string; data: MarketData }[] = [];
 
