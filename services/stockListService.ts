@@ -535,7 +535,7 @@ const initNameCache = () => {
 export const getCompanyName = (symbol: string): string => {
     if (!NAME_CACHE) initNameCache();
     // Try exact match
-    if (NAME_CACHE?.has(symbol)) return NAME_CACHE.get(symbol)!;
+    if (NAME_CACHE?.has(symbol)) return NAME_CACHE.get(symbol.NS)!;
     
     // Try common commodities
     if (STATIC_MCX_LIST.includes(symbol)) return `${symbol} Futures (MCX)`;
