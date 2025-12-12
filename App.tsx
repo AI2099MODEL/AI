@@ -378,6 +378,7 @@ export default function App() {
       )}
 
       <main className="flex-1 overflow-y-auto custom-scrollbar relative w-full max-w-lg mx-auto md:max-w-7xl md:border-x md:border-slate-800">
+        {/* Page 0: Stock Market */}
         {activePage === 0 && (
             <PageMarket 
                 recommendations={recommendations} 
@@ -386,10 +387,23 @@ export default function App() {
                 onRefresh={() => loadMarketData()}
                 isLoading={isLoading}
                 enabledMarkets={settings.enabledMarkets}
+                allowedTypes={['STOCK']}
             />
         )}
-        {/* Merged Paper & AutoBot Page */}
+        {/* Page 1: Crypto/F&O Market */}
         {activePage === 1 && (
+            <PageMarket 
+                recommendations={recommendations} 
+                marketData={marketData} 
+                onTrade={(s) => { setSelectedStock(s); setIsTradeModalOpen(true); }}
+                onRefresh={() => loadMarketData()}
+                isLoading={isLoading}
+                enabledMarkets={settings.enabledMarkets}
+                allowedTypes={['MCX', 'FOREX', 'CRYPTO']}
+            />
+        )}
+        {/* Page 2: Merged Paper & AutoBot Page */}
+        {activePage === 2 && (
             <PagePaperTrading 
                 holdings={allHoldings} 
                 marketData={marketData}
@@ -408,7 +422,8 @@ export default function App() {
                 transactions={transactions}
             />
         )}
-        {activePage === 2 && (
+        {/* Page 3: Live PNL */}
+        {activePage === 3 && (
             <PageLivePNL 
                 holdings={allHoldings}
                 marketData={marketData}
@@ -422,7 +437,8 @@ export default function App() {
                 brokerBalances={brokerBalances}
             />
         )}
-        {activePage === 3 && (
+        {/* Page 4: Config */}
+        {activePage === 4 && (
             <PageConfiguration 
                 settings={settings}
                 onSave={(s) => { setSettings(s); showNotification("Settings Saved"); }}

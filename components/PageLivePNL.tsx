@@ -23,7 +23,7 @@ export const PageLivePNL: React.FC<PageLivePNLProps> = ({
   const totalPnl = currentVal - totalCost;
   const pnlPercent = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
   
-  const totalCash = Object.values(brokerBalances).reduce((a: number, b: number) => a + b, 0);
+  const totalCash = Object.values(brokerBalances).reduce((a: number, b) => a + (b as number), 0);
 
   return (
     <div className="p-4 pb-20 animate-fade-in space-y-6">
@@ -41,7 +41,7 @@ export const PageLivePNL: React.FC<PageLivePNLProps> = ({
                 <div>
                     <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Live P&L</p>
                     <div className={`text-3xl font-mono font-bold ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {totalPnl >= 0 ? '+' : ''}₹{totalPnl.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                        {totalPnl >= 0 ? '+' : ''}₹{Math.round(totalPnl || 0).toLocaleString()}
                     </div>
                     <div className={`text-sm font-bold mt-1 ${totalPnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                         {pnlPercent.toFixed(2)}% Return
@@ -50,15 +50,15 @@ export const PageLivePNL: React.FC<PageLivePNLProps> = ({
                 <div className="text-right">
                     <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Total Invested</p>
                     <div className="text-2xl font-mono font-bold text-white">
-                        ₹{totalCost.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                        ₹{Math.round(totalCost || 0).toLocaleString()}
                     </div>
-                    <p className="text-xs text-slate-500 mt-2">Value: ₹{currentVal.toLocaleString(undefined, {maximumFractionDigits:0})}</p>
+                    <p className="text-xs text-slate-500 mt-2">Value: ₹{Math.round(currentVal || 0).toLocaleString()}</p>
                 </div>
             </div>
             
             <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-800 flex justify-between items-center">
                  <div className="flex items-center gap-2 text-slate-400 text-xs"><Wallet size={14}/> Connected Broker Cash</div>
-                 <div className="font-mono font-bold text-white">₹{totalCash.toLocaleString(undefined, {maximumFractionDigits: 0})}</div>
+                 <div className="font-mono font-bold text-white">₹{Math.round(totalCash || 0).toLocaleString()}</div>
             </div>
        </div>
        
@@ -69,7 +69,7 @@ export const PageLivePNL: React.FC<PageLivePNLProps> = ({
                    <div className="flex items-center gap-2 mb-1 text-xs font-bold text-slate-300">
                        <Building2 size={12}/> {broker}
                    </div>
-                   <div className="text-sm font-mono text-white">₹{balance.toLocaleString()}</div>
+                   <div className="text-sm font-mono text-white">₹{Math.round(balance as number).toLocaleString()}</div>
                </div>
            ))}
        </div>

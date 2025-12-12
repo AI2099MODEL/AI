@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { PortfolioItem, MarketData, Funds, HoldingAnalysis, Transaction, AssetType } from '../types';
 import { PortfolioTable } from './PortfolioTable';
 import { ActivityFeed } from './ActivityFeed';
-import { TrendingUp, Wallet, PieChart, Sparkles, RefreshCw, Bot, Power, Zap, Play, Pause, Globe, DollarSign, Cpu, BarChart2 } from 'lucide-react';
+import { TrendingUp, Wallet, PieChart, Sparkles, RefreshCw, Bot, Power, Globe, DollarSign, Cpu, BarChart2 } from 'lucide-react';
 
 interface PagePaperTradingProps {
   holdings: PortfolioItem[];
@@ -60,7 +60,7 @@ export const PagePaperTrading: React.FC<PagePaperTradingProps> = ({
            <div className="flex items-center gap-3">
               <div className="p-3 bg-indigo-600/20 rounded-xl text-indigo-400"><Wallet size={24} /></div>
               <div>
-                <h1 className="text-2xl font-bold text-white">Paper Trading</h1>
+                <h1 className="text-2xl font-bold text-white">Live Paper</h1>
                 <p className="text-xs text-slate-400">Virtual Portfolio & Bots</p>
               </div>
            </div>
@@ -89,7 +89,7 @@ export const PagePaperTrading: React.FC<PagePaperTradingProps> = ({
                 <div>
                     <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Total P&L</p>
                     <div className={`text-3xl font-mono font-bold ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {totalPnl >= 0 ? '+' : ''}₹{totalPnl.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                        {totalPnl >= 0 ? '+' : ''}₹{Math.round(totalPnl || 0).toLocaleString()}
                     </div>
                     <div className={`text-sm font-bold mt-1 ${totalPnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                         {pnlPercent.toFixed(2)}% Return
@@ -98,7 +98,7 @@ export const PagePaperTrading: React.FC<PagePaperTradingProps> = ({
                 <div className="text-right">
                     <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Account Value</p>
                     <div className="text-2xl font-mono font-bold text-white">
-                        ₹{totalAccountValue.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                        ₹{Math.round(totalAccountValue || 0).toLocaleString()}
                     </div>
                     <p className="text-xs text-slate-500 mt-2 flex justify-end items-center gap-1"><Wallet size={10}/> Cash: ₹{(availableCash/1000).toFixed(1)}k</p>
                 </div>
@@ -135,10 +135,10 @@ export const PagePaperTrading: React.FC<PagePaperTradingProps> = ({
                                                 <div className="p-1.5 rounded bg-slate-800/80 border border-slate-700">{asset.icon}</div>
                                                 {asset.label}
                                             </td>
-                                            <td className="px-5 py-3 text-right text-slate-400 font-mono">₹{stats.invested.toLocaleString()}</td>
-                                            <td className="px-5 py-3 text-right text-slate-200 font-mono">₹{stats.current.toLocaleString()}</td>
+                                            <td className="px-5 py-3 text-right text-slate-400 font-mono">₹{Math.round(stats.invested).toLocaleString()}</td>
+                                            <td className="px-5 py-3 text-right text-slate-200 font-mono">₹{Math.round(stats.current).toLocaleString()}</td>
                                             <td className={`px-5 py-3 text-right font-mono font-bold ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
-                                                {isProfit ? '+' : ''}{stats.pnl.toLocaleString()} 
+                                                {isProfit ? '+' : ''}{Math.round(stats.pnl).toLocaleString()} 
                                                 <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded ${isProfit ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
                                                     {stats.pct.toFixed(2)}%
                                                 </span>
@@ -148,11 +148,11 @@ export const PagePaperTrading: React.FC<PagePaperTradingProps> = ({
                                 })}
                                 {/* Totals Row */}
                                 <tr className="bg-slate-800/30 font-bold border-t border-slate-700">
-                                    <td className="px-5 py-3 text-white">Total</td>
-                                    <td className="px-5 py-3 text-right text-slate-300 font-mono">₹{totalCost.toLocaleString()}</td>
-                                    <td className="px-5 py-3 text-right text-slate-200 font-mono">₹{currentVal.toLocaleString()}</td>
-                                    <td className={`px-5 py-3 text-right font-mono ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                         {totalPnl >= 0 ? '+' : ''}{totalPnl.toLocaleString()}
+                                    <td className="px-5 py-3 text-white font-bold">Total Portfolio</td>
+                                    <td className="px-5 py-3 text-right text-slate-300 font-mono">₹{Math.round(totalCost).toLocaleString()}</td>
+                                    <td className="px-5 py-3 text-right text-slate-200 font-mono">₹{Math.round(currentVal).toLocaleString()}</td>
+                                    <td className={`px-5 py-3 text-right font-mono font-bold text-base ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                         {totalPnl >= 0 ? '+' : ''}{Math.round(totalPnl || 0).toLocaleString()}
                                     </td>
                                 </tr>
                             </tbody>
@@ -178,7 +178,8 @@ export const PagePaperTrading: React.FC<PagePaperTradingProps> = ({
                         marketData={marketData} 
                         analysisData={analysisData} 
                         onSell={onSell} 
-                        showAiInsights={false} 
+                        showAiInsights={false}
+                        hideBroker={true}
                     />
                 </div>
            </div>

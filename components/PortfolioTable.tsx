@@ -8,9 +8,17 @@ interface PortfolioTableProps {
   analysisData?: Record<string, HoldingAnalysis>;
   onSell: (symbol: string, broker: any) => void;
   showAiInsights?: boolean;
+  hideBroker?: boolean;
 }
 
-export const PortfolioTable: React.FC<PortfolioTableProps> = ({ portfolio, marketData, analysisData = {}, onSell, showAiInsights = true }) => {
+export const PortfolioTable: React.FC<PortfolioTableProps> = ({ 
+  portfolio, 
+  marketData, 
+  analysisData = {}, 
+  onSell, 
+  showAiInsights = true,
+  hideBroker = false
+}) => {
   if (portfolio.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-slate-500 bg-surface rounded-xl border border-slate-800">
@@ -45,15 +53,15 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({ portfolio, marke
       <table className="w-full text-left border-collapse">
         <thead>
           <tr className="border-b border-slate-700 bg-slate-800/50 text-slate-400 text-sm">
+            <th className="p-4 font-medium text-center w-20">Action</th>
             <th className="p-4 font-medium">Symbol</th>
             <th className="p-4 font-medium text-center">Type</th>
-            <th className="p-4 font-medium">Broker</th>
+            {!hideBroker && <th className="p-4 font-medium">Broker</th>}
             <th className="p-4 font-medium text-right">Qty</th>
             <th className="p-4 font-medium text-right">Avg Cost</th>
             <th className="p-4 font-medium text-right">Current</th>
             <th className="p-4 font-medium text-right">P/L</th>
             {showAiInsights && <th className="p-4 font-medium text-center">AI Insight</th>}
-            <th className="p-4 font-medium text-center">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -68,15 +76,25 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({ portfolio, marke
 
             return (
               <tr key={`${item.symbol}-${item.broker}-${idx}`} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors group">
+                <td className="p-4 text-center">
+                  <button
+                    onClick={() => onSell(item.symbol, item.broker)}
+                    className="px-3 py-1.5 text-xs font-bold text-red-400 bg-red-400/10 hover:bg-red-400/20 rounded-lg border border-red-400/20 transition-colors"
+                  >
+                    SELL
+                  </button>
+                </td>
                 <td className="p-4 font-bold text-white">{item.symbol}</td>
                 <td className="p-4 text-center">
                     <div className="flex items-center justify-center gap-1" title={item.type}>
                         {getAssetIcon(item.type)}
                     </div>
                 </td>
-                <td className="p-4">
-                    {getBrokerBadge(item.broker)}
-                </td>
+                {!hideBroker && (
+                    <td className="p-4">
+                        {getBrokerBadge(item.broker)}
+                    </td>
+                )}
                 <td className="p-4 text-right text-slate-300 font-mono">{item.quantity.toFixed(item.type === 'CRYPTO' ? 4 : 0)}</td>
                 <td className="p-4 text-right text-slate-300 font-mono">₹{item.avgCost.toFixed(2)}</td>
                 <td className="p-4 text-right text-slate-300 font-mono">₹{currentPrice.toFixed(2)}</td>
@@ -118,14 +136,6 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({ portfolio, marke
                     )}
                     </td>
                 )}
-                <td className="p-4 text-center">
-                  <button
-                    onClick={() => onSell(item.symbol, item.broker)}
-                    className="px-3 py-1 text-xs font-medium text-red-400 bg-red-400/10 hover:bg-red-400/20 rounded border border-red-400/20 transition-colors"
-                  >
-                    Sell
-                  </button>
-                </td>
               </tr>
             );
           })}
