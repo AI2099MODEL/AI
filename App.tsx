@@ -1,8 +1,9 @@
+
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { fetchTopStockPicks, analyzeHoldings } from './services/geminiService';
 import { checkAndRefreshStockList } from './services/stockListService';
 import { fetchRealStockData } from './services/marketDataService';
-import { StockRecommendation, PortfolioItem, MarketData, Transaction, AppSettings, UserProfile, Funds, HoldingAnalysis } from './types';
+import { StockRecommendation, PortfolioItem, MarketData, Transaction, AppSettings, UserProfile, Funds, HoldingAnalysis, AssetType } from './types';
 import { AuthOverlay } from './components/AuthOverlay';
 import { TradeModal } from './components/TradeModal';
 import { fetchBrokerBalance, fetchHoldings, placeOrder } from './services/brokerService';
@@ -249,7 +250,7 @@ export default function App() {
       if (user) {
           refreshIntervalRef.current = setInterval(() => {
               loadMarketData();
-          }, 15000); 
+          }, 5000); // REFRESH RATE: 5s (Safe for Yahoo Finance)
       }
       return () => { if (refreshIntervalRef.current) clearInterval(refreshIntervalRef.current); };
   }, [user, loadMarketData]);
@@ -265,20 +266,35 @@ export default function App() {
                   let updatedPortfolio = [...paperPortfolio];
 
                   results.forEach(res => {
-                      if (res.transaction) {
+                      if (res.transaction && res.newFunds) {
                           newTxs.push(res.transaction);
+                          updatedFunds = res.newFunds; // Use the funds returned by the engine
+                          
                           if (res.transaction.type === 'BUY') {
-                              updatedFunds.stock -= (res.transaction.price * res.transaction.quantity);
-                              updatedPortfolio.push({
-                                  symbol: res.transaction.symbol,
-                                  type: res.transaction.assetType,
-                                  quantity: res.transaction.quantity,
-                                  avgCost: res.transaction.price,
-                                  totalCost: res.transaction.price * res.transaction.quantity,
-                                  broker: 'PAPER'
-                              });
+                              // Add/Update Portfolio
+                              const existingIdx = updatedPortfolio.findIndex(p => p.symbol === res.transaction?.symbol);
+                              if (existingIdx >= 0) {
+                                  const existing = updatedPortfolio[existingIdx];
+                                  const newQty = existing.quantity + res.transaction.quantity;
+                                  const newTotalCost = existing.totalCost + (res.transaction.price * res.transaction.quantity);
+                                  updatedPortfolio[existingIdx] = {
+                                      ...existing,
+                                      quantity: newQty,
+                                      totalCost: newTotalCost,
+                                      avgCost: newTotalCost / newQty
+                                  };
+                              } else {
+                                  updatedPortfolio.push({
+                                      symbol: res.transaction.symbol,
+                                      type: res.transaction.assetType,
+                                      quantity: res.transaction.quantity,
+                                      avgCost: res.transaction.price,
+                                      totalCost: res.transaction.price * res.transaction.quantity,
+                                      broker: 'PAPER'
+                                  });
+                              }
                           } else {
-                              updatedFunds.stock += (res.transaction.price * res.transaction.quantity);
+                              // SELL Logic
                               updatedPortfolio = updatedPortfolio.filter(p => p.symbol !== res.transaction?.symbol);
                           }
                       }
@@ -291,7 +307,7 @@ export default function App() {
                       showNotification(`Bot executed ${newTxs.length} trades`);
                   }
               }
-          }, 15000);
+          }, 5000); // BOT RATE: 5s to match market data
       }
       return () => { if (botIntervalRef.current) clearInterval(botIntervalRef.current); };
   }, [user, activeBots, settings, paperPortfolio, marketData, funds, recommendations]);
@@ -303,13 +319,34 @@ export default function App() {
       
       if (broker === 'PAPER') {
           const cost = quantity * price;
+          
+          // Separate Fund Check
+          let hasFunds = false;
+          if (type === 'MCX' && funds.mcx >= cost) hasFunds = true;
+          else if (type === 'FOREX' && funds.forex >= cost) hasFunds = true;
+          else if (type === 'CRYPTO' && funds.crypto >= cost) hasFunds = true;
+          else if (type === 'STOCK' && funds.stock >= cost) hasFunds = true;
+
+          if (!hasFunds) {
+              showNotification(`Insufficient ${type} Funds`);
+              return;
+          }
+
           const existing = paperPortfolio.find(p => p.symbol === symbol && p.broker === 'PAPER');
           if (existing) {
               setPaperPortfolio(prev => prev.map(p => p.symbol === symbol ? {...p, quantity: p.quantity + quantity, totalCost: p.totalCost + cost, avgCost: (p.totalCost + cost)/(p.quantity+quantity)} : p));
           } else {
               setPaperPortfolio(prev => [...prev, { symbol, type, quantity, avgCost: price, totalCost: cost, broker: 'PAPER' }]);
           }
-          setFunds(prev => ({...prev, stock: prev.stock - cost})); 
+
+          setFunds(prev => {
+              const newFunds = { ...prev };
+              if (type === 'MCX') newFunds.mcx -= cost;
+              else if (type === 'FOREX') newFunds.forex -= cost;
+              else if (type === 'CRYPTO') newFunds.crypto -= cost;
+              else newFunds.stock -= cost;
+              return newFunds;
+          });
       } else {
           await placeOrder(broker, symbol, quantity, 'BUY', price, type, settings);
           syncExternalPortfolios();
@@ -326,9 +363,19 @@ export default function App() {
           const existing = paperPortfolio.find(p => p.symbol === symbol);
           if (existing && existing.quantity >= quantity) {
                const remaining = existing.quantity - quantity;
+               const proceeds = quantity * price;
+
                if (remaining < 0.0001) setPaperPortfolio(prev => prev.filter(p => p.symbol !== symbol));
                else setPaperPortfolio(prev => prev.map(p => p.symbol === symbol ? {...p, quantity: remaining, totalCost: p.avgCost * remaining} : p));
-               setFunds(prev => ({...prev, stock: prev.stock + (quantity * price)}));
+               
+               setFunds(prev => {
+                   const newFunds = { ...prev };
+                   if (type === 'MCX') newFunds.mcx += proceeds;
+                   else if (type === 'FOREX') newFunds.forex += proceeds;
+                   else if (type === 'CRYPTO') newFunds.crypto += proceeds;
+                   else newFunds.stock += proceeds;
+                   return newFunds;
+               });
           }
       } else {
           await placeOrder(broker, symbol, quantity, 'SELL', price, type, settings);
