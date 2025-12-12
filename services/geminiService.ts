@@ -13,6 +13,7 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 // Algorithmic Selection (Replaces AI)
+// Uses purely local Technical Analysis (RSI, MACD, ATR) for selection and targeting
 export const fetchTopStockPicks = async (
     totalCapital: number, 
     stockUniverse: string[] = [], 
@@ -32,7 +33,7 @@ export const fetchTopStockPicks = async (
   // 1. SELECT STOCKS (ALGORITHMIC)
   if (markets.stocks && stockUniverse.length > 0) {
       // Scan a larger subset of stocks to find the best 20
-      const candidates = shuffleArray([...stockUniverse]).slice(0, 60); 
+      const candidates = shuffleArray([...stockUniverse]).slice(0, 50); 
       
       const promises = candidates.map(async (sym) => {
           try {
@@ -43,7 +44,7 @@ export const fetchTopStockPicks = async (
               if (!technicals) return null;
 
               // Filter out low scores
-              if (technicals.score < 40) return null;
+              if (technicals.score < 45) return null;
 
               let type: 'INTRADAY' | 'BTST' | 'WEEKLY' | 'MONTHLY' | null = null;
               let reason = "";
@@ -72,6 +73,11 @@ export const fetchTopStockPicks = async (
                   pattern = "Strong Trend";
               }
 
+              // Local Algo Targeting using ATR
+              // ATR (Average True Range) gives volatility-based targets
+              const atr = technicals.atr || (price * 0.02); // Fallback to 2% if ATR missing
+              const target = price + (atr * 2); // 2x ATR Target
+              
               if (type) {
                    return {
                       rec: {
@@ -82,7 +88,7 @@ export const fetchTopStockPicks = async (
                         currentPrice: price,
                         reason: reason,
                         riskLevel: type === 'INTRADAY' ? 'High' : 'Medium',
-                        targetPrice: Math.round(price * 1.05 * 100) / 100, // 5% Target
+                        targetPrice: parseFloat(target.toFixed(2)),
                         lotSize: 1,
                         timeframe: type,
                         chartPattern: pattern
@@ -119,6 +125,10 @@ export const fetchTopStockPicks = async (
                 else if (data.technicals.score < 35) recReason = "Strong Sell";
                 else if (data.technicals.score < 45) recReason = "Sell";
 
+                // Crypto Volatility is higher, use wider ATR multiple
+                const atr = data.technicals.atr || (data.price * 0.04);
+                const target = recReason.includes('Buy') ? data.price + (atr * 1.5) : data.price - (atr * 1.5);
+
                 return {
                     symbol: c,
                     name: getCompanyName(c),
@@ -127,7 +137,7 @@ export const fetchTopStockPicks = async (
                     currentPrice: data.price,
                     reason: `${recReason} - Score: ${data.technicals.score.toFixed(0)}`,
                     riskLevel: 'High',
-                    targetPrice: data.price * (recReason.includes('Buy') ? 1.05 : 0.95),
+                    targetPrice: parseFloat(target.toFixed(2)),
                     lotSize: c === 'BTC/USDT' ? 0.01 : 1,
                     timeframe: 'INTRADAY',
                     chartPattern: data.technicals.activeSignals[0] || "Volatile"
@@ -147,6 +157,7 @@ export const fetchTopStockPicks = async (
       for (const m of mcx) {
           const data = await fetchRealStockData(m, dummySettings);
           if (data) {
+              const atr = data.technicals.atr || (data.price * 0.01);
               picks.push({
                 symbol: m,
                 name: getCompanyName(m),
@@ -155,7 +166,7 @@ export const fetchTopStockPicks = async (
                 currentPrice: data.price,
                 reason: `Commodity Trend (${data.technicals.signalStrength})`,
                 riskLevel: 'Medium',
-                targetPrice: data.price * 1.02,
+                targetPrice: parseFloat((data.price + (atr * 2)).toFixed(2)),
                 lotSize: 1,
                 timeframe: 'WEEKLY',
                 chartPattern: data.technicals.activeSignals[0] || "Trend"
@@ -170,6 +181,7 @@ export const fetchTopStockPicks = async (
       for (const f of forex) {
           const data = await fetchRealStockData(f, dummySettings);
           if (data) {
+               const atr = data.technicals.atr || (data.price * 0.005);
                picks.push({
                 symbol: f,
                 name: getCompanyName(f),
@@ -178,7 +190,7 @@ export const fetchTopStockPicks = async (
                 currentPrice: data.price,
                 reason: `Forex Momentum (${data.technicals.score.toFixed(0)})`,
                 riskLevel: 'High',
-                targetPrice: data.price * 1.01,
+                targetPrice: parseFloat((data.price + atr).toFixed(4)),
                 lotSize: 1000,
                 timeframe: 'INTRADAY',
                 chartPattern: "Scalping"
@@ -199,6 +211,8 @@ export const analyzeHoldings = async (holdings: PortfolioItem[], marketData: Mar
         };
 
         const score = data.technicals.score;
+        const atr = data.technicals.atr || (data.price * 0.02);
+        
         let action: 'BUY' | 'SELL' | 'HOLD' = 'HOLD';
         let reason = "Neutral Trend";
 
@@ -220,7 +234,7 @@ export const analyzeHoldings = async (holdings: PortfolioItem[], marketData: Mar
             symbol: h.symbol,
             action,
             reason,
-            targetPrice: parseFloat((data.price * (action === 'BUY' ? 1.1 : 0.95)).toFixed(2)),
+            targetPrice: parseFloat((data.price + (action === 'BUY' ? (atr * 2) : -(atr))).toFixed(2)),
             dividendYield: "0.00%",
             cagr: "N/A"
         };

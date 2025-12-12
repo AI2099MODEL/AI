@@ -1,8 +1,9 @@
 
 import React from 'react';
 import { StockRecommendation, MarketData } from '../types';
-import { TrendingUp, TrendingDown, Zap, BarChart2, Globe, DollarSign, Box, Cpu, Target, Scan } from 'lucide-react';
+import { TrendingUp, TrendingDown, Zap, BarChart2, Globe, DollarSign, Cpu, Target, Scan } from 'lucide-react';
 import { USD_INR_RATE } from '../services/marketDataService';
+import { getMarketStatus } from '../services/marketStatusService';
 
 interface StockCardProps {
   stock: StockRecommendation;
@@ -15,6 +16,10 @@ export const StockCard: React.FC<StockCardProps> = ({ stock, marketData, onTrade
   const price = currentData ? currentData.price : stock.currentPrice;
   const change = currentData ? currentData.changePercent : 0;
   const isPositive = change >= 0;
+  
+  // Market Status Check
+  const marketStatus = getMarketStatus(stock.type);
+  const isMarketOpen = marketStatus.isOpen;
   
   // Get Technicals
   const tech = currentData?.technicals;
@@ -193,15 +198,17 @@ export const StockCard: React.FC<StockCardProps> = ({ stock, marketData, onTrade
       </div>
 
       <button
-        onClick={() => onTrade(stock)}
-        className={`w-full py-2 md:py-2.5 rounded-lg font-bold text-white transition-all flex items-center justify-center gap-2 text-xs md:text-sm shadow-lg hover:shadow-xl hover:brightness-110 active:scale-[0.98] relative z-10 ${
-            stock.type === 'CRYPTO' ? 'bg-purple-600 shadow-purple-500/20' :
-            stock.type === 'MCX' ? 'bg-yellow-600 shadow-yellow-500/20' :
-            stock.type === 'FOREX' ? 'bg-emerald-600 shadow-emerald-500/20' :
-            'bg-blue-600 shadow-blue-500/20'
+        onClick={() => isMarketOpen && onTrade(stock)}
+        disabled={!isMarketOpen}
+        className={`w-full py-2 md:py-2.5 rounded-lg font-bold text-white transition-all flex items-center justify-center gap-2 text-xs md:text-sm shadow-lg hover:shadow-xl relative z-10 ${
+            !isMarketOpen ? 'bg-slate-700 text-slate-500 cursor-not-allowed shadow-none' :
+            stock.type === 'CRYPTO' ? 'bg-purple-600 shadow-purple-500/20 hover:brightness-110' :
+            stock.type === 'MCX' ? 'bg-yellow-600 shadow-yellow-500/20 hover:brightness-110' :
+            stock.type === 'FOREX' ? 'bg-emerald-600 shadow-emerald-500/20 hover:brightness-110' :
+            'bg-blue-600 shadow-blue-500/20 hover:brightness-110'
         }`}
       >
-        Trade {stock.symbol}
+        {isMarketOpen ? `Trade ${stock.symbol}` : `Market Closed (${marketStatus.message})`}
       </button>
     </div>
   );

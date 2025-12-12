@@ -44,7 +44,7 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({
       else if (broker === 'SHOONYA') colorClass = 'bg-orange-900/30 border-orange-700/50 text-orange-300';
       else if (broker === 'BINANCE') colorClass = 'bg-yellow-900/30 border-yellow-700/50 text-yellow-300';
       else if (broker === 'COINDCX') colorClass = 'bg-blue-900/30 border-blue-700/50 text-blue-300';
-      return <span className={`text-[9px] px-1.5 py-0.5 rounded border ${colorClass}`}>{broker.substring(0,4)}</span>;
+      return <span className={`text-[9px] px-1 py-0.5 rounded border ${colorClass}`}>{broker.substring(0,4)}</span>;
   };
 
   const formatCurrency = (val: number) => {
@@ -55,7 +55,7 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({
     <div className="overflow-x-auto bg-surface rounded-xl border border-slate-800 shadow-xl custom-scrollbar">
       <table className="w-full text-left border-collapse">
         <thead>
-          <tr className="border-b border-slate-700 bg-slate-800/80 text-slate-400 text-[10px] md:text-xs uppercase tracking-wider backdrop-blur-sm sticky top-0 z-10">
+          <tr className="border-b border-slate-700 bg-slate-800/80 text-slate-400 text-[9px] md:text-xs uppercase tracking-wider backdrop-blur-sm sticky top-0 z-10">
             <th className="p-2 md:p-3 font-bold">Symbol</th>
             <th className="p-2 md:p-3 font-bold text-right hidden md:table-cell">Qty</th>
             <th className="p-2 md:p-3 font-bold text-right hidden md:table-cell">Avg</th>
@@ -64,7 +64,7 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({
             <th className="p-2 md:p-3 font-bold text-right hidden md:table-cell text-white">Value</th>
             <th className="p-2 md:p-3 font-bold text-right">P&L</th>
             {showAiInsights && <th className="p-2 md:p-3 font-bold text-center hidden md:table-cell">AI</th>}
-            <th className="p-2 md:p-3 font-bold text-center w-12 md:w-16">Act</th>
+            <th className="p-2 md:p-3 font-bold text-center w-10 md:w-16">Act</th>
           </tr>
         </thead>
         <tbody>
@@ -81,7 +81,7 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({
             const analysis = analysisData[item.symbol];
 
             return (
-              <tr key={`${item.symbol}-${item.broker}-${idx}`} className="border-b border-slate-800/50 hover:bg-slate-800/50 transition-colors text-xs md:text-sm group">
+              <tr key={`${item.symbol}-${item.broker}-${idx}`} className="border-b border-slate-800/50 hover:bg-slate-800/50 transition-colors text-[10px] md:text-sm group">
                 
                 {/* Symbol Col */}
                 <td className="p-2 md:p-3">
@@ -90,11 +90,10 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({
                             {getAssetIcon(item.type)}
                         </div>
                         <div>
-                            <div className="font-bold text-white tracking-wide text-xs md:text-sm truncate max-w-[80px] md:max-w-none">{item.symbol}</div>
-                            <div className="flex gap-1 mt-0.5">
+                            <div className="font-bold text-white tracking-wide text-[10px] md:text-sm truncate max-w-[70px] md:max-w-none">{item.symbol}</div>
+                            <div className="flex gap-1 mt-0.5 items-center">
                                 {!hideBroker && getBrokerBadge(item.broker)}
-                                {/* Show Qty on Mobile */}
-                                <span className="md:hidden text-[9px] text-slate-400 bg-slate-800 px-1 rounded border border-slate-700 whitespace-nowrap">Q: {item.quantity}</span>
+                                <span className="md:hidden text-[8px] text-slate-400 whitespace-nowrap">x{item.quantity}</span>
                             </div>
                         </div>
                     </div>
@@ -105,7 +104,7 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({
                 <td className="p-3 text-right text-slate-400 font-mono hidden md:table-cell">{formatCurrency(item.avgCost)}</td>
                 
                 {/* LTP */}
-                <td className="p-2 md:p-3 text-right text-white font-mono font-medium text-xs md:text-sm">
+                <td className="p-2 md:p-3 text-right text-white font-mono font-medium text-[10px] md:text-sm">
                     {formatCurrency(currentPrice)}
                 </td>
                 
@@ -117,11 +116,11 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({
                     {formatCurrency(currentValue)}
                 </td>
 
-                {/* P&L */}
+                {/* P&L - Horizontal on Mobile, Stacked on Desktop */}
                 <td className={`p-2 md:p-3 text-right font-bold font-mono ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
-                  <div className="flex flex-col items-end">
+                  <div className="flex flex-row md:flex-col items-center justify-end gap-1 md:items-end md:gap-0">
                     <span className="whitespace-nowrap">{pl > 0 ? '+' : ''}{formatCurrency(pl)}</span>
-                    <span className={`text-[9px] px-1 py-0.5 rounded mt-0.5 ${isProfit ? 'bg-green-500/10 text-green-300' : 'bg-red-500/10 text-red-300'}`}>
+                    <span className={`text-[9px] px-1 py-0.5 rounded md:mt-0.5 ${isProfit ? 'bg-green-500/10 text-green-300' : 'bg-red-500/10 text-red-300'}`}>
                         {plPercent.toFixed(1)}%
                     </span>
                   </div>
@@ -150,10 +149,10 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({
                 <td className="p-2 md:p-3 text-center">
                   <button
                     onClick={() => onSell(item.symbol, item.broker)}
-                    className="p-1.5 md:px-3 md:py-1.5 text-xs font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 rounded-lg border border-red-500/20 transition-colors"
+                    className="p-1 md:px-3 md:py-1.5 text-[10px] md:text-xs font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 rounded-lg border border-red-500/20 transition-colors"
                   >
                     <span className="hidden md:inline">SELL</span>
-                    <span className="md:hidden"><X size={14}/></span>
+                    <span className="md:hidden"><X size={12}/></span>
                   </button>
                 </td>
               </tr>
