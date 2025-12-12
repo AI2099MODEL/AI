@@ -16,6 +16,7 @@ import { PageMarket } from './components/PageMarket';
 import { PagePaperTrading } from './components/PagePaperTrading';
 import { PageLivePNL } from './components/PageLivePNL';
 import { PageConfiguration } from './components/PageConfiguration';
+import { AdBanner } from './components/AdBanner'; // Import Ad Component
 
 const GLOBAL_STORAGE = {
     USER: 'aitrade_current_user_v2',
@@ -584,6 +585,8 @@ export default function App() {
                 onToggleBot={(b) => setActiveBots(p => ({...p, [b]: !p[b]}))}
             />
         )}
+
+        <AdBanner className="mb-20" slotId="1234567890" />
       </main>
 
       <BottomNav activeTab={activePage} onChange={setActivePage} />

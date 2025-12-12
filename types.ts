@@ -140,3 +140,10 @@ export interface AppSettings {
   coinswitchApiKey?: string;
   zebpayApiKey?: string;
 }
+
+// Global declaration for Google Ads
+declare global {
+    interface Window {
+        adsbygoogle: any[];
+    }
+}
