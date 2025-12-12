@@ -99,7 +99,7 @@ export const fetchTopStockPicks = async (
             : timeframe === "WEEKLY"
             ? 0.03
             : 0.05;
-        const target = s.price * (1 + factor);
+       const target = Math.round(s.price * (1 + factor) * 100) / 100;
 
         return {
           symbol: s.symbol,
