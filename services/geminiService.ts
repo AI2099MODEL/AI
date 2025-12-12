@@ -161,10 +161,7 @@ export const fetchTopStockPicks = async (
       picks.push(...topBtst.map((s) => toRec(s, "BTST")));
       picks.push(...topWeekly.map((s) => toRec(s, "WEEKLY")));
       picks.push(...topMonthly.map((s) => toRec(s, "MONTHLY")));
-    }
-
-    // You can later extend MCX / FOREX / CRYPTO similarly using TICKER_MAP
-
+        // You can later extend MCX / FOREX / CRYPTO similarly using TICKER_MAP
     return picks;
   } catch (error) {
     console.error("fetchTopStockPicks failed, using static fallback:", error);
