@@ -3,7 +3,7 @@ import { Candle, StockData, TechnicalSignals, AppSettings, AssetType } from "../
 import { analyzeStockTechnical } from "./technicalAnalysis";
 
 const YAHOO_CHART_BASE = "https://query1.finance.yahoo.com/v8/finance/chart/";
-const USD_INR_RATE = 84.50; // Static fallback, can be made dynamic
+export const USD_INR_RATE = 84.50; // Exported for UI conversions
 
 // Realistic Base Prices in INR for Simulation Fallback
 const INR_BASE_PRICES: { [key: string]: number } = {
@@ -91,6 +91,10 @@ function generateSimulatedData(symbol: string, basePrice: number): StockData {
     // Create a 5-minute candle history
     let currentPrice = basePrice;
     
+    // Add randomness based on time to simulated drift
+    const timeDrift = (Math.sin(now / 100) * (basePrice * 0.005)); 
+    currentPrice += timeDrift;
+
     for (let i = 50; i >= 0; i--) {
         const time = now - (i * 300);
         const volatility = basePrice * 0.002; // 0.2% volatility
@@ -109,8 +113,10 @@ function generateSimulatedData(symbol: string, basePrice: number): StockData {
     const lastCandle = candles[candles.length - 1];
     const technicals = analyzeStockTechnical(candles);
     
-    // Add some "live" randomness to the final price for real-time feel
-    const liveJitter = (Math.random() - 0.5) * (basePrice * 0.0005);
+    // Add "live" jitter for real-time feel on refresh
+    // For Crypto, make it slightly more volatile
+    const volatilityMultiplier = symbol === 'BTC' || symbol === 'ETH' ? 0.001 : 0.0005;
+    const liveJitter = (Math.random() - 0.5) * (basePrice * volatilityMultiplier);
     const finalPrice = lastCandle.close + liveJitter;
 
     return {

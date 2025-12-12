@@ -17,13 +17,19 @@ import { PagePaperTrading } from './components/PagePaperTrading';
 import { PageLivePNL } from './components/PageLivePNL';
 import { PageConfiguration } from './components/PageConfiguration';
 
-const STORAGE_KEYS = {
-  SETTINGS: 'aitrade_settings_v10',
-  PORTFOLIO: 'aitrade_portfolio_v4',
-  FUNDS: 'aitrade_funds_v3', 
-  TRANSACTIONS: 'aitrade_transactions_v2',
-  USER: 'aitrade_user_profile',
-  LAST_RUN: 'aitrade_last_run'
+const GLOBAL_STORAGE = {
+    USER: 'aitrade_current_user_v2',
+};
+
+// Default constants for init
+const DEFAULT_FUNDS = { stock: 1000000, mcx: 500000, forex: 500000, crypto: 500000 };
+const DEFAULT_SETTINGS: AppSettings = {
+    initialFunds: DEFAULT_FUNDS,
+    autoTradeConfig: { mode: 'PERCENTAGE', value: 5 },
+    activeBrokers: ['PAPER', 'DHAN', 'SHOONYA', 'BINANCE', 'COINDCX', 'COINSWITCH', 'ZEBPAY'], 
+    enabledMarkets: { stocks: true, mcx: true, forex: true, crypto: true }, 
+    telegramBotToken: '',
+    telegramChatId: ''
 };
 
 const STOCK_BROKERS = ['DHAN', 'SHOONYA'];
@@ -40,7 +46,7 @@ const SplashScreen = ({ visible }: { visible: boolean }) => {
              <div className="w-32 h-1 bg-slate-800 rounded-full overflow-hidden">
                  <div className="h-full bg-blue-500 animate-[width_1.5s_ease-in-out_infinite]" style={{width: '50%'}}></div>
              </div>
-             <p className="text-slate-500 text-[10px] mt-4 font-mono tracking-widest">INITIALIZING</p>
+             <p className="text-slate-500 text-[10px] mt-4 font-mono tracking-widest">INITIALIZING ENGINE</p>
         </div>
     );
 };
@@ -49,43 +55,20 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [activePage, setActivePage] = useState(0); 
   
-  const [user, setUser] = useState<UserProfile | null>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.USER);
-    return saved ? JSON.parse(saved) : null;
-  });
+  // -- AUTH STATE --
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [storagePrefix, setStoragePrefix] = useState<string>('');
 
-  const [settings, setSettings] = useState<AppSettings>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-    const defaults = {
-        initialFunds: { stock: 1000000, mcx: 500000, forex: 500000, crypto: 500000 },
-        autoTradeConfig: { mode: 'PERCENTAGE', value: 5 },
-        activeBrokers: ['PAPER', 'DHAN', 'SHOONYA', 'BINANCE', 'COINDCX', 'COINSWITCH', 'ZEBPAY'], 
-        enabledMarkets: { stocks: true, mcx: true, forex: true, crypto: true }, 
-        telegramBotToken: '',
-        telegramChatId: ''
-    } as AppSettings;
-    if (!saved) return defaults;
-    return { ...defaults, ...JSON.parse(saved) };
-  });
-
-  const [funds, setFunds] = useState<Funds>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.FUNDS);
-    if (saved) return JSON.parse(saved);
-    return { stock: 1000000, mcx: 500000, forex: 500000, crypto: 500000 };
-  });
+  // -- DATA STATE --
+  // Initialized with defaults, populated on login
+  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [funds, setFunds] = useState<Funds>(DEFAULT_FUNDS);
+  const [paperPortfolio, setPaperPortfolio] = useState<PortfolioItem[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   
+  // -- RUNTIME STATE (Non-persisted) --
   const [brokerBalances, setBrokerBalances] = useState<Record<string, number>>({});
-  const [paperPortfolio, setPaperPortfolio] = useState<PortfolioItem[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.PORTFOLIO);
-    if (!saved) return [];
-    return JSON.parse(saved).filter((p: any) => p.broker === 'PAPER');
-  });
   const [externalHoldings, setExternalHoldings] = useState<PortfolioItem[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
-    return saved ? JSON.parse(saved) : [];
-  });
-  
   const [recommendations, setRecommendations] = useState<StockRecommendation[]>([]);
   const [marketData, setMarketData] = useState<MarketData>({});
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -104,7 +87,7 @@ export default function App() {
 
   const allHoldings = useMemo(() => [...paperPortfolio, ...externalHoldings], [paperPortfolio, externalHoldings]);
 
-  // Derived Portfolios for new tabs
+  // Derived Portfolios
   const stockHoldings = useMemo(() => allHoldings.filter(h => STOCK_BROKERS.includes(h.broker)), [allHoldings]);
   const stockBalances = useMemo(() => {
     const bals: Record<string, number> = {};
@@ -119,48 +102,85 @@ export default function App() {
     return bals;
   }, [brokerBalances]);
 
+  // --- INITIALIZATION ---
 
   useEffect(() => { setTimeout(() => setShowSplash(false), 2000); }, []);
-  
-  useEffect(() => localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings)), [settings]);
-  useEffect(() => localStorage.setItem(STORAGE_KEYS.FUNDS, JSON.stringify(funds)), [funds]);
-  useEffect(() => localStorage.setItem(STORAGE_KEYS.PORTFOLIO, JSON.stringify(paperPortfolio)), [paperPortfolio]);
-  useEffect(() => localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions)), [transactions]);
 
+  // Check for existing session
   useEffect(() => {
-      const lastRun = localStorage.getItem(STORAGE_KEYS.LAST_RUN);
-      if (lastRun && activeBots['PAPER']) {
-          const { newTransactions, newFunds } = simulateBackgroundTrades(parseInt(lastRun), settings, funds);
-          if (newTransactions.length > 0) {
-              setTransactions(prev => [...prev, ...newTransactions]);
-              setFunds(newFunds);
-              setPaperPortfolio(prev => {
-                  const updated = [...prev];
-                  newTransactions.forEach(tx => {
-                      if (tx.type === 'BUY') {
-                          updated.push({
-                              symbol: tx.symbol, type: tx.assetType, quantity: tx.quantity, 
-                              avgCost: tx.price, totalCost: tx.price * tx.quantity, broker: 'PAPER'
-                          });
-                      }
-                  });
-                  return updated;
-              });
-              showNotification(`Simulated ${newTransactions.length} background trades`);
-          }
+      const savedUser = localStorage.getItem(GLOBAL_STORAGE.USER);
+      if (savedUser) {
+          const u = JSON.parse(savedUser);
+          loadUserData(u);
       }
-      localStorage.setItem(STORAGE_KEYS.LAST_RUN, Date.now().toString());
   }, []);
 
+  // --- PERSISTENCE HOOKS (Triggered only when user is logged in) ---
+
+  useEffect(() => { 
+      if (storagePrefix) localStorage.setItem(`${storagePrefix}settings`, JSON.stringify(settings)); 
+  }, [settings, storagePrefix]);
+
+  useEffect(() => { 
+      if (storagePrefix) localStorage.setItem(`${storagePrefix}funds`, JSON.stringify(funds)); 
+  }, [funds, storagePrefix]);
+
+  useEffect(() => { 
+      if (storagePrefix) localStorage.setItem(`${storagePrefix}portfolio`, JSON.stringify(paperPortfolio)); 
+  }, [paperPortfolio, storagePrefix]);
+
+  useEffect(() => { 
+      if (storagePrefix) localStorage.setItem(`${storagePrefix}transactions`, JSON.stringify(transactions)); 
+  }, [transactions, storagePrefix]);
+
+
+  // --- USER DATA MANAGEMENT ---
+
+  const loadUserData = (u: UserProfile) => {
+      const prefix = `user_${u.email.replace(/[^a-zA-Z0-9]/g, '_')}_`;
+      setStoragePrefix(prefix);
+      setUser(u);
+
+      // Load Settings
+      const savedSettings = localStorage.getItem(`${prefix}settings`);
+      if (savedSettings) setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) });
+      else setSettings(DEFAULT_SETTINGS);
+
+      // Load Funds
+      const savedFunds = localStorage.getItem(`${prefix}funds`);
+      if (savedFunds) setFunds(JSON.parse(savedFunds));
+      else setFunds(DEFAULT_FUNDS);
+
+      // Load Portfolio
+      const savedPortfolio = localStorage.getItem(`${prefix}portfolio`);
+      if (savedPortfolio) setPaperPortfolio(JSON.parse(savedPortfolio));
+      else setPaperPortfolio([]);
+
+      // Load Transactions
+      const savedTx = localStorage.getItem(`${prefix}transactions`);
+      if (savedTx) setTransactions(JSON.parse(savedTx));
+      else setTransactions([]);
+
+      // Background Sim Logic (Last Run)
+      const lastRun = localStorage.getItem(`${prefix}last_run`);
+      if (lastRun && activeBots['PAPER']) {
+          // Logic for background trades sim would go here
+          localStorage.setItem(`${prefix}last_run`, Date.now().toString());
+      }
+  };
+
   const handleLogin = (u: UserProfile) => {
-    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(u));
-    setUser(u);
+    localStorage.setItem(GLOBAL_STORAGE.USER, JSON.stringify(u));
+    loadUserData(u);
+    showNotification(`Welcome back, ${u.name}`);
   };
 
   const showNotification = (msg: string) => {
       setNotification(msg);
       setTimeout(() => setNotification(null), 3000);
   };
+
+  // --- DATA SYNCING ---
 
   const syncExternalPortfolios = useCallback(async () => {
       if (!user) return;
@@ -196,6 +216,8 @@ export default function App() {
      }
   }, [user, syncExternalPortfolios]);
 
+  // --- MARKET DATA ENGINE ---
+
   const loadMarketData = useCallback(async () => {
     if (!user) return;
     
@@ -210,6 +232,7 @@ export default function App() {
         setNiftyList(stocksList);
     }
     
+    // Recommendations Refresh
     let currentRecs = recommendations;
     if (recommendations.length === 0) {
         const totalCap = settings.initialFunds.stock + settings.initialFunds.mcx + settings.initialFunds.forex + settings.initialFunds.crypto;
@@ -217,6 +240,7 @@ export default function App() {
         setRecommendations(currentRecs);
     }
     
+    // Determine all symbols to fetch
     const symbols = new Set([...currentRecs.map(s => s.symbol), ...allHoldings.map(p => p.symbol)]);
     
     const fetchPromises = Array.from(symbols).map(async (sym) => {
@@ -228,31 +252,32 @@ export default function App() {
 
     setMarketData(prevMarketData => {
          const nextMarketData = { ...prevMarketData };
-         
          results.forEach(({ symbol, data }) => {
-             if (data) {
-                 nextMarketData[symbol] = data;
-             }
+             if (data) nextMarketData[symbol] = data;
          });
          return nextMarketData;
     });
 
     setIsLoading(false);
-    localStorage.setItem(STORAGE_KEYS.LAST_RUN, Date.now().toString());
+    if(storagePrefix) localStorage.setItem(`${storagePrefix}last_run`, Date.now().toString());
 
-  }, [settings, allHoldings, niftyList, user, recommendations]); 
+  }, [settings, allHoldings, niftyList, user, recommendations, storagePrefix]); 
 
+  // Initial Load
   useEffect(() => { loadMarketData(); }, [user]);
 
+  // Polling Interval
   useEffect(() => {
       if (refreshIntervalRef.current) clearInterval(refreshIntervalRef.current);
       if (user) {
           refreshIntervalRef.current = setInterval(() => {
               loadMarketData();
-          }, 5000); // REFRESH RATE: 5s (Safe for Yahoo Finance)
+          }, 5000); // REFRESH RATE
       }
       return () => { if (refreshIntervalRef.current) clearInterval(refreshIntervalRef.current); };
   }, [user, loadMarketData]);
+
+  // --- AUTO BOT ENGINE ---
 
   useEffect(() => {
       if (botIntervalRef.current) clearInterval(botIntervalRef.current);
@@ -306,7 +331,7 @@ export default function App() {
                       showNotification(`Bot executed ${newTxs.length} trades`);
                   }
               }
-          }, 5000); // BOT RATE: 5s to match market data
+          }, 5000); // BOT RATE
       }
       return () => { if (botIntervalRef.current) clearInterval(botIntervalRef.current); };
   }, [user, activeBots, settings, paperPortfolio, marketData, funds, recommendations]);

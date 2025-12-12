@@ -2,6 +2,7 @@
 import React from 'react';
 import { StockRecommendation, MarketData } from '../types';
 import { TrendingUp, TrendingDown, Zap, BarChart2, Globe, DollarSign, Box, Cpu, Target, Scan } from 'lucide-react';
+import { USD_INR_RATE } from '../services/marketDataService';
 
 interface StockCardProps {
   stock: StockRecommendation;
@@ -88,6 +89,9 @@ export const StockCard: React.FC<StockCardProps> = ({ stock, marketData, onTrade
       }
   };
 
+  // Calc USD for Crypto
+  const usdPrice = stock.type === 'CRYPTO' ? price / USD_INR_RATE : null;
+
   return (
     <div className={`rounded-xl p-4 border ${theme.border} bg-gradient-to-br ${theme.bgGradient} transition-all duration-300 shadow-lg group relative overflow-hidden ${theme.glow}`}>
       {/* Background Decorator */}
@@ -125,9 +129,17 @@ export const StockCard: React.FC<StockCardProps> = ({ stock, marketData, onTrade
 
       <div className="flex justify-between items-end mb-4 relative z-10">
           <div>
-            <div className="text-2xl font-mono font-bold text-white tracking-tight drop-shadow-sm">
-                ₹{price.toFixed(2)}
+            <div className="flex items-baseline gap-2">
+                <div className="text-2xl font-mono font-bold text-white tracking-tight drop-shadow-sm">
+                    ₹{price.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                </div>
+                {usdPrice && (
+                    <div className="text-xs font-mono text-slate-400 font-medium">
+                        (${usdPrice.toLocaleString('en-US', { maximumFractionDigits: 2 })})
+                    </div>
+                )}
             </div>
+            
             <div className={`text-xs flex items-center gap-1 font-bold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
                 {isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                 {change > 0 ? '+' : ''}{change.toFixed(2)}%
