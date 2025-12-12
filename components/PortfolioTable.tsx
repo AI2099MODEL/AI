@@ -7,9 +7,10 @@ interface PortfolioTableProps {
   marketData: MarketData;
   analysisData?: Record<string, HoldingAnalysis>;
   onSell: (symbol: string, broker: any) => void;
+  showAiInsights?: boolean;
 }
 
-export const PortfolioTable: React.FC<PortfolioTableProps> = ({ portfolio, marketData, analysisData = {}, onSell }) => {
+export const PortfolioTable: React.FC<PortfolioTableProps> = ({ portfolio, marketData, analysisData = {}, onSell, showAiInsights = true }) => {
   if (portfolio.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-slate-500 bg-surface rounded-xl border border-slate-800">
@@ -51,7 +52,7 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({ portfolio, marke
             <th className="p-4 font-medium text-right">Avg Cost</th>
             <th className="p-4 font-medium text-right">Current</th>
             <th className="p-4 font-medium text-right">P/L</th>
-            <th className="p-4 font-medium text-center">AI Insight</th>
+            {showAiInsights && <th className="p-4 font-medium text-center">AI Insight</th>}
             <th className="p-4 font-medium text-center">Action</th>
           </tr>
         </thead>
@@ -85,36 +86,38 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({ portfolio, marke
                     <span className="text-xs opacity-75">({plPercent.toFixed(2)}%)</span>
                   </div>
                 </td>
-                <td className="p-4 text-center">
-                   {analysis ? (
-                       <div className="group/tooltip relative flex justify-center">
-                           <span className={`cursor-help px-2 py-1 rounded text-[10px] font-bold border ${
-                               analysis.action === 'BUY' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 
-                               analysis.action === 'SELL' ? 'bg-red-500/20 text-red-400 border-red-500/30' : 
-                               'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-                           }`}>
-                               {analysis.action}
-                           </span>
-                           
-                           {/* Tooltip */}
-                           <div className="absolute right-0 top-8 w-64 p-3 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 hidden group-hover/tooltip:block text-left animate-fade-in">
-                               <div className="text-xs font-bold text-white mb-2 flex items-center gap-1">
-                                   <Info size={12}/> AI Analysis
-                               </div>
-                               <div className="space-y-1 text-[10px] text-slate-300">
-                                   <div className="flex justify-between"><span>Target:</span> <span className="font-mono text-white">₹{analysis.targetPrice}</span></div>
-                                   <div className="flex justify-between"><span>Dividend:</span> <span className="font-mono text-white">{analysis.dividendYield}</span></div>
-                                   <div className="flex justify-between"><span>3Y CAGR:</span> <span className="font-mono text-white">{analysis.cagr}</span></div>
-                                   <div className="pt-2 mt-1 border-t border-slate-700 text-slate-400 italic">
-                                       "{analysis.reason}"
-                                   </div>
-                               </div>
-                           </div>
-                       </div>
-                   ) : (
-                       <span className="text-[10px] text-slate-600">-</span>
-                   )}
-                </td>
+                {showAiInsights && (
+                    <td className="p-4 text-center">
+                    {analysis ? (
+                        <div className="group/tooltip relative flex justify-center">
+                            <span className={`cursor-help px-2 py-1 rounded text-[10px] font-bold border ${
+                                analysis.action === 'BUY' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 
+                                analysis.action === 'SELL' ? 'bg-red-500/20 text-red-400 border-red-500/30' : 
+                                'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                            }`}>
+                                {analysis.action}
+                            </span>
+                            
+                            {/* Tooltip */}
+                            <div className="absolute right-0 top-8 w-64 p-3 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 hidden group-hover/tooltip:block text-left animate-fade-in">
+                                <div className="text-xs font-bold text-white mb-2 flex items-center gap-1">
+                                    <Info size={12}/> AI Analysis
+                                </div>
+                                <div className="space-y-1 text-[10px] text-slate-300">
+                                    <div className="flex justify-between"><span>Target:</span> <span className="font-mono text-white">₹{analysis.targetPrice}</span></div>
+                                    <div className="flex justify-between"><span>Dividend:</span> <span className="font-mono text-white">{analysis.dividendYield}</span></div>
+                                    <div className="flex justify-between"><span>3Y CAGR:</span> <span className="font-mono text-white">{analysis.cagr}</span></div>
+                                    <div className="pt-2 mt-1 border-t border-slate-700 text-slate-400 italic">
+                                        "{analysis.reason}"
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <span className="text-[10px] text-slate-600">-</span>
+                    )}
+                    </td>
+                )}
                 <td className="p-4 text-center">
                   <button
                     onClick={() => onSell(item.symbol, item.broker)}

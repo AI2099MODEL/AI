@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { PortfolioItem, MarketData, Funds, HoldingAnalysis, Transaction } from '../types';
+import { PortfolioItem, MarketData, Funds, HoldingAnalysis, Transaction, AssetType } from '../types';
 import { PortfolioTable } from './PortfolioTable';
 import { ActivityFeed } from './ActivityFeed';
-import { TrendingUp, Wallet, PieChart, Sparkles, RefreshCw, Bot, Power, Zap, Play, Pause } from 'lucide-react';
+import { TrendingUp, Wallet, PieChart, Sparkles, RefreshCw, Bot, Power, Zap, Play, Pause, Globe, DollarSign, Cpu, BarChart2 } from 'lucide-react';
 
 interface PagePaperTradingProps {
   holdings: PortfolioItem[];
@@ -28,6 +28,7 @@ export const PagePaperTrading: React.FC<PagePaperTradingProps> = ({
   // Filter only Paper Holdings
   const paperHoldings = holdings.filter(h => h.broker === 'PAPER');
   
+  // Aggregate Calculations
   const currentVal = paperHoldings.reduce((acc, h) => acc + ((marketData[h.symbol]?.price || h.avgCost) * h.quantity), 0);
   const totalCost = paperHoldings.reduce((acc, h) => acc + h.totalCost, 0);
   const totalPnl = currentVal - totalCost;
@@ -35,6 +36,23 @@ export const PagePaperTrading: React.FC<PagePaperTradingProps> = ({
   
   const availableCash = funds.stock + funds.mcx + funds.forex + funds.crypto;
   const totalAccountValue = availableCash + currentVal;
+
+  // Breakdown Calculation
+  const getAssetStats = (type: AssetType) => {
+      const items = paperHoldings.filter(h => h.type === type);
+      const invested = items.reduce((acc, h) => acc + h.totalCost, 0);
+      const current = items.reduce((acc, h) => acc + ((marketData[h.symbol]?.price || h.avgCost) * h.quantity), 0);
+      const pnl = current - invested;
+      const pct = invested > 0 ? (pnl / invested) * 100 : 0;
+      return { invested, current, pnl, pct };
+  };
+
+  const assetTypes: {type: AssetType, label: string, icon: React.ReactNode}[] = [
+      { type: 'STOCK', label: 'Stocks', icon: <BarChart2 size={16} className="text-blue-400"/> },
+      { type: 'CRYPTO', label: 'Crypto', icon: <Cpu size={16} className="text-purple-400"/> },
+      { type: 'MCX', label: 'Commodities', icon: <Globe size={16} className="text-yellow-400"/> },
+      { type: 'FOREX', label: 'Forex', icon: <DollarSign size={16} className="text-green-400"/> },
+  ];
 
   return (
     <div className="p-4 pb-20 animate-fade-in flex flex-col h-full">
@@ -89,24 +107,80 @@ export const PagePaperTrading: React.FC<PagePaperTradingProps> = ({
 
        {/* Tab Content */}
        {activeTab === 'PORTFOLIO' ? (
-           <div className="space-y-4 animate-slide-up">
-                <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-bold text-white">Holdings</h3>
-                    <button 
-                        onClick={onAnalyze} 
-                        disabled={isAnalyzing}
-                        className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold flex items-center gap-2 transition-all disabled:opacity-50"
-                    >
-                        {isAnalyzing ? <RefreshCw className="animate-spin" size={14}/> : <Sparkles size={14}/>} 
-                        AI Analyze
-                    </button>
+           <div className="space-y-6 animate-slide-up">
+                
+                {/* Beautiful PNL Breakdown Table */}
+                <div className="bg-surface rounded-xl border border-slate-800 overflow-hidden shadow-lg">
+                    <div className="px-5 py-3 border-b border-slate-700/50 bg-slate-800/30 flex items-center justify-between">
+                        <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider">Asset Performance</h3>
+                        <span className="text-[10px] text-slate-500 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">Real-time</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                            <thead className="text-xs text-slate-500 bg-slate-900/50">
+                                <tr>
+                                    <th className="px-5 py-3 font-medium">Asset Class</th>
+                                    <th className="px-5 py-3 font-medium text-right">Invested</th>
+                                    <th className="px-5 py-3 font-medium text-right">Current Value</th>
+                                    <th className="px-5 py-3 font-medium text-right">P&L</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800/50">
+                                {assetTypes.map((asset) => {
+                                    const stats = getAssetStats(asset.type);
+                                    const isProfit = stats.pnl >= 0;
+                                    return (
+                                        <tr key={asset.type} className="hover:bg-slate-800/20 transition-colors">
+                                            <td className="px-5 py-3 font-medium text-white flex items-center gap-2">
+                                                <div className="p-1.5 rounded bg-slate-800/80 border border-slate-700">{asset.icon}</div>
+                                                {asset.label}
+                                            </td>
+                                            <td className="px-5 py-3 text-right text-slate-400 font-mono">₹{stats.invested.toLocaleString()}</td>
+                                            <td className="px-5 py-3 text-right text-slate-200 font-mono">₹{stats.current.toLocaleString()}</td>
+                                            <td className={`px-5 py-3 text-right font-mono font-bold ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
+                                                {isProfit ? '+' : ''}{stats.pnl.toLocaleString()} 
+                                                <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded ${isProfit ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                                                    {stats.pct.toFixed(2)}%
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                                {/* Totals Row */}
+                                <tr className="bg-slate-800/30 font-bold border-t border-slate-700">
+                                    <td className="px-5 py-3 text-white">Total</td>
+                                    <td className="px-5 py-3 text-right text-slate-300 font-mono">₹{totalCost.toLocaleString()}</td>
+                                    <td className="px-5 py-3 text-right text-slate-200 font-mono">₹{currentVal.toLocaleString()}</td>
+                                    <td className={`px-5 py-3 text-right font-mono ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                         {totalPnl >= 0 ? '+' : ''}{totalPnl.toLocaleString()}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-                <PortfolioTable 
-                    portfolio={paperHoldings} 
-                    marketData={marketData} 
-                    analysisData={analysisData} 
-                    onSell={onSell} 
-                />
+
+                {/* Holdings Table */}
+                <div>
+                    <div className="flex justify-between items-center mb-3">
+                        <h3 className="text-lg font-bold text-white">Open Positions</h3>
+                        <button 
+                            onClick={onAnalyze} 
+                            disabled={isAnalyzing}
+                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold flex items-center gap-2 transition-all disabled:opacity-50 border border-slate-700"
+                        >
+                            {isAnalyzing ? <RefreshCw className="animate-spin" size={14}/> : <Sparkles size={14}/>} 
+                            Analyze
+                        </button>
+                    </div>
+                    <PortfolioTable 
+                        portfolio={paperHoldings} 
+                        marketData={marketData} 
+                        analysisData={analysisData} 
+                        onSell={onSell} 
+                        showAiInsights={false} 
+                    />
+                </div>
            </div>
        ) : (
            <div className="space-y-6 animate-slide-up">
