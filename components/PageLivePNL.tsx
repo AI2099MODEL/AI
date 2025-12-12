@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { PortfolioItem, MarketData, HoldingAnalysis } from '../types';
 import { PortfolioTable } from './PortfolioTable';
@@ -45,7 +46,7 @@ export const PageLivePNL: React.FC<PageLivePNLProps> = ({
                 <div>
                     <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Total P&L</p>
                     <div className={`text-3xl font-mono font-bold ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {totalPnl >= 0 ? '+' : ''}₹{Math.round(totalPnl || 0).toLocaleString()}
+                        {totalPnl >= 0 ? '+' : ''}₹{totalPnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                     </div>
                     <div className={`text-sm font-bold mt-1 ${totalPnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                         {pnlPercent.toFixed(2)}% Return
@@ -54,15 +55,15 @@ export const PageLivePNL: React.FC<PageLivePNLProps> = ({
                 <div className="text-right">
                     <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Total Invested</p>
                     <div className="text-2xl font-mono font-bold text-white">
-                        ₹{Math.round(totalCost || 0).toLocaleString()}
+                        ₹{totalCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                     </div>
-                    <p className="text-xs text-slate-500 mt-2">Value: ₹{Math.round(currentVal || 0).toLocaleString()}</p>
+                    <p className="text-xs text-slate-500 mt-2">Value: ₹{currentVal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                 </div>
             </div>
             
             <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-800 flex justify-between items-center">
                  <div className="flex items-center gap-2 text-slate-400 text-xs"><Wallet size={14}/> Total Broker Cash</div>
-                 <div className="font-mono font-bold text-white">₹{Math.round(totalCash || 0).toLocaleString()}</div>
+                 <div className="font-mono font-bold text-white">₹{totalCash.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
             </div>
        </div>
        
@@ -74,7 +75,7 @@ export const PageLivePNL: React.FC<PageLivePNLProps> = ({
                     <div className="flex items-center gap-2 mb-1 text-xs font-bold text-slate-300">
                         <Building2 size={12}/> {broker}
                     </div>
-                    <div className="text-sm font-mono text-white">₹{Math.round(Number(balance)).toLocaleString()}</div>
+                    <div className="text-sm font-mono text-white">₹{Number(balance).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
                 </div>
             ))}
         </div>

@@ -42,9 +42,8 @@ export const fetchTopStockPicks = async (
 
   // 1. SELECT STOCKS (ALGORITHMIC)
   if (markets.stocks && stockUniverse.length > 0) {
-      // Shuffle universe and pick a subset to scan to avoid rate limits/slow load
-      // We scan 15 random stocks to find opportunities
-      const candidates = shuffleArray([...stockUniverse]).slice(0, 15);
+      // Shuffle universe and pick a larger subset to scan (100 stocks)
+      const candidates = shuffleArray([...stockUniverse]).slice(0, 100);
       
       const promises = candidates.map(async (sym) => {
           try {
@@ -53,6 +52,9 @@ export const fetchTopStockPicks = async (
 
               const { technicals, price } = data;
               if (!technicals) return null;
+
+              // Filter out low scores immediately to save processing
+              if (technicals.score < 50) return null;
 
               let type: 'INTRADAY' | 'BTST' | 'WEEKLY' | 'MONTHLY' | null = null;
               let reason = "";
@@ -77,27 +79,44 @@ export const fetchTopStockPicks = async (
                   pattern = "Mean Reversion";
               }
 
+              // Fallback for high score stocks without specific category
+              if (!type && technicals.score > 70) {
+                  type = 'WEEKLY';
+                  reason = `High Technical Score (${technicals.score.toFixed(0)})`;
+                  pattern = "Strong Trend";
+              }
+
               if (type) {
                    return {
-                      symbol: sym,
-                      name: getCompanyName(sym),
-                      type: 'STOCK',
-                      sector: 'Equity',
-                      currentPrice: price,
-                      reason: reason,
-                      riskLevel: type === 'INTRADAY' ? 'High' : 'Medium',
-                      targetPrice: Math.round(price * 1.05), // 5% Target
-                      lotSize: 1,
-                      timeframe: type,
-                      chartPattern: pattern
-                   } as StockRecommendation;
+                      rec: {
+                        symbol: sym,
+                        name: getCompanyName(sym),
+                        type: 'STOCK',
+                        sector: 'Equity',
+                        currentPrice: price,
+                        reason: reason,
+                        riskLevel: type === 'INTRADAY' ? 'High' : 'Medium',
+                        targetPrice: Math.round(price * 1.05 * 100) / 100, // 5% Target, rounded 2 decimals
+                        lotSize: 1,
+                        timeframe: type,
+                        chartPattern: pattern
+                      } as StockRecommendation,
+                      score: technicals.score
+                   };
               }
           } catch (e) { console.error(e); }
           return null;
       });
 
       const stockResults = await Promise.all(promises);
-      stockResults.forEach(r => { if(r) picks.push(r); });
+      
+      // Sort by Technical Score and take top 10
+      const sortedResults = stockResults
+        .filter((r): r is { rec: StockRecommendation, score: number } => r !== null)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 10);
+        
+      sortedResults.forEach(r => picks.push(r.rec));
   }
 
   // 2. ADD CRYPTO (Simulated Technicals)

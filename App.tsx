@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { fetchTopStockPicks, analyzeHoldings } from './services/geminiService';
 import { checkAndRefreshStockList } from './services/stockListService';
@@ -33,11 +34,12 @@ const generateFallbackHistory = (startPrice: number, count: number) => {
     return candles;
 };
 
+// Updated keys to reset data as requested
 const STORAGE_KEYS = {
-  SETTINGS: 'aitrade_settings_v9',
-  PORTFOLIO: 'aitrade_portfolio_v3',
-  FUNDS: 'aitrade_funds_v2', 
-  TRANSACTIONS: 'aitrade_transactions',
+  SETTINGS: 'aitrade_settings_v10',
+  PORTFOLIO: 'aitrade_portfolio_v4',
+  FUNDS: 'aitrade_funds_v3', 
+  TRANSACTIONS: 'aitrade_transactions_v2',
   USER: 'aitrade_user_profile',
   LAST_RUN: 'aitrade_last_run'
 };

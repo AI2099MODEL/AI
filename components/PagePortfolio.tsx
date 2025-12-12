@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { PortfolioItem, MarketData } from '../types';
-import { Building2, Wallet, ChevronRight, DollarSign } from 'lucide-react';
+import { Building2, Wallet, ChevronRight, DollarSign, Briefcase } from 'lucide-react';
 
 interface PagePortfolioProps {
   holdings: PortfolioItem[];
@@ -49,7 +50,7 @@ export const PagePortfolio: React.FC<PagePortfolioProps> = ({ holdings, brokerBa
                            </div>
                            <div className="text-right">
                                <p className="text-xs text-slate-400">Total Net Worth</p>
-                               <p className="text-xl font-mono font-bold text-white">₹{stats.total.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
+                               <p className="text-xl font-mono font-bold text-white">₹{stats.total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                            </div>
                        </div>
                        
@@ -58,13 +59,13 @@ export const PagePortfolio: React.FC<PagePortfolioProps> = ({ holdings, brokerBa
                                <div className="flex items-center gap-1.5 text-slate-400 mb-1 text-xs">
                                    <Wallet size={12}/> Cash Balance
                                </div>
-                               <div className="font-mono text-white font-bold">₹{stats.cash.toLocaleString(undefined, {maximumFractionDigits: 0})}</div>
+                               <div className="font-mono text-white font-bold">₹{stats.cash.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
                            </div>
                            <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800">
                                <div className="flex items-center gap-1.5 text-slate-400 mb-1 text-xs">
                                    <DollarSign size={12}/> Invested
                                </div>
-                               <div className="font-mono text-white font-bold">₹{stats.invested.toLocaleString(undefined, {maximumFractionDigits: 0})}</div>
+                               <div className="font-mono text-white font-bold">₹{stats.invested.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
                            </div>
                        </div>
 
@@ -79,5 +80,3 @@ export const PagePortfolio: React.FC<PagePortfolioProps> = ({ holdings, brokerBa
     </div>
   );
 };
-// Helper to fix icon import issue if Briefcase is not defined in Lucide props (it is active in imports)
-import { Briefcase } from 'lucide-react';

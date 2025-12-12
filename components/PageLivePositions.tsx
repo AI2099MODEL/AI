@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { PortfolioItem, MarketData, Funds, HoldingAnalysis } from '../types';
 import { PortfolioTable } from './PortfolioTable';
@@ -40,7 +41,7 @@ export const PageLivePositions: React.FC<PageLivePositionsProps> = ({
                 <div>
                     <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Total P&L</p>
                     <div className={`text-3xl font-mono font-bold ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {totalPnl >= 0 ? '+' : ''}₹{totalPnl.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                        {totalPnl >= 0 ? '+' : ''}₹{totalPnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                     </div>
                     <div className={`text-sm font-bold mt-1 ${totalPnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                         {pnlPercent.toFixed(2)}% Return
@@ -49,9 +50,9 @@ export const PageLivePositions: React.FC<PageLivePositionsProps> = ({
                 <div className="text-right">
                     <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Current Value</p>
                     <div className="text-2xl font-mono font-bold text-white">
-                        ₹{currentVal.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                        ₹{currentVal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                     </div>
-                    <p className="text-xs text-slate-500 mt-2">Invested: ₹{totalCost.toLocaleString(undefined, {maximumFractionDigits:0})}</p>
+                    <p className="text-xs text-slate-500 mt-2">Invested: ₹{totalCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                 </div>
             </div>
 

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { PortfolioItem, MarketData, Funds, HoldingAnalysis, Transaction, AssetType } from '../types';
 import { PortfolioTable } from './PortfolioTable';
@@ -89,7 +90,7 @@ export const PagePaperTrading: React.FC<PagePaperTradingProps> = ({
                 <div>
                     <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Total P&L</p>
                     <div className={`text-3xl font-mono font-bold ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {totalPnl >= 0 ? '+' : ''}₹{Math.round(totalPnl || 0).toLocaleString()}
+                        {totalPnl >= 0 ? '+' : ''}₹{totalPnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                     </div>
                     <div className={`text-sm font-bold mt-1 ${totalPnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                         {pnlPercent.toFixed(2)}% Return
@@ -98,7 +99,7 @@ export const PagePaperTrading: React.FC<PagePaperTradingProps> = ({
                 <div className="text-right">
                     <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Account Value</p>
                     <div className="text-2xl font-mono font-bold text-white">
-                        ₹{Math.round(totalAccountValue || 0).toLocaleString()}
+                        ₹{totalAccountValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                     </div>
                     <p className="text-xs text-slate-500 mt-2 flex justify-end items-center gap-1"><Wallet size={10}/> Cash: ₹{(availableCash/1000).toFixed(1)}k</p>
                 </div>
@@ -135,10 +136,10 @@ export const PagePaperTrading: React.FC<PagePaperTradingProps> = ({
                                                 <div className="p-1.5 rounded bg-slate-800/80 border border-slate-700">{asset.icon}</div>
                                                 {asset.label}
                                             </td>
-                                            <td className="px-5 py-3 text-right text-slate-400 font-mono">₹{Math.round(stats.invested).toLocaleString()}</td>
-                                            <td className="px-5 py-3 text-right text-slate-200 font-mono">₹{Math.round(stats.current).toLocaleString()}</td>
+                                            <td className="px-5 py-3 text-right text-slate-400 font-mono">₹{stats.invested.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                            <td className="px-5 py-3 text-right text-slate-200 font-mono">₹{stats.current.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                                             <td className={`px-5 py-3 text-right font-mono font-bold ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
-                                                {isProfit ? '+' : ''}{Math.round(stats.pnl).toLocaleString()} 
+                                                {isProfit ? '+' : ''}{stats.pnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} 
                                                 <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded ${isProfit ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
                                                     {stats.pct.toFixed(2)}%
                                                 </span>
@@ -149,10 +150,10 @@ export const PagePaperTrading: React.FC<PagePaperTradingProps> = ({
                                 {/* Totals Row */}
                                 <tr className="bg-slate-800/30 font-bold border-t border-slate-700">
                                     <td className="px-5 py-3 text-white font-bold">Total Portfolio</td>
-                                    <td className="px-5 py-3 text-right text-slate-300 font-mono">₹{Math.round(totalCost).toLocaleString()}</td>
-                                    <td className="px-5 py-3 text-right text-slate-200 font-mono">₹{Math.round(currentVal).toLocaleString()}</td>
+                                    <td className="px-5 py-3 text-right text-slate-300 font-mono">₹{totalCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                    <td className="px-5 py-3 text-right text-slate-200 font-mono">₹{currentVal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                                     <td className={`px-5 py-3 text-right font-mono font-bold text-base ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                         {totalPnl >= 0 ? '+' : ''}{Math.round(totalPnl || 0).toLocaleString()}
+                                         {totalPnl >= 0 ? '+' : ''}{totalPnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                                     </td>
                                 </tr>
                             </tbody>
