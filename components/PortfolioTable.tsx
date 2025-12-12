@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { PortfolioItem, MarketData, AssetType, HoldingAnalysis } from '../types';
 import { TrendingUp, TrendingDown, DollarSign, Globe, BarChart2, Box, Cpu, Info } from 'lucide-react';
@@ -43,39 +44,44 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({
       else if (broker === 'SHOONYA') colorClass = 'bg-orange-900/30 border-orange-700 text-orange-300';
       else if (broker === 'BINANCE') colorClass = 'bg-yellow-900/30 border-yellow-700 text-yellow-300';
       else if (broker === 'COINDCX') colorClass = 'bg-blue-900/30 border-blue-700 text-blue-300';
-      else if (broker === 'COINSWITCH') colorClass = 'bg-teal-900/30 border-teal-700 text-teal-300';
-      
       return <span className={`text-[10px] px-2 py-0.5 rounded border ${colorClass}`}>{broker}</span>;
+  };
+
+  const formatCurrency = (val: number) => {
+      return `₹${val.toLocaleString('en-IN', { maximumFractionDigits: 2, minimumFractionDigits: 2 })}`;
   };
 
   return (
     <div className="overflow-x-auto bg-surface rounded-xl border border-slate-800 shadow-lg custom-scrollbar">
       <table className="w-full text-left border-collapse">
         <thead>
-          <tr className="border-b border-slate-700 bg-slate-800/50 text-slate-400 text-sm">
-            <th className="p-4 font-medium text-center w-20">Action</th>
-            <th className="p-4 font-medium">Symbol</th>
-            <th className="p-4 font-medium text-center">Type</th>
-            {!hideBroker && <th className="p-4 font-medium">Broker</th>}
-            <th className="p-4 font-medium text-right">Qty</th>
-            <th className="p-4 font-medium text-right">Avg Cost</th>
-            <th className="p-4 font-medium text-right">Current</th>
-            <th className="p-4 font-medium text-right">P/L</th>
-            {showAiInsights && <th className="p-4 font-medium text-center">AI Insight</th>}
+          <tr className="border-b border-slate-700 bg-slate-800/50 text-slate-400 text-xs uppercase tracking-wider">
+            <th className="p-4 font-bold text-center w-20">Action</th>
+            <th className="p-4 font-bold">Symbol</th>
+            <th className="p-4 font-bold text-right">Qty</th>
+            <th className="p-4 font-bold text-right">Avg Price</th>
+            <th className="p-4 font-bold text-right">LTP</th>
+            <th className="p-4 font-bold text-right text-slate-300">Invested</th>
+            <th className="p-4 font-bold text-right text-white">Cur. Value</th>
+            <th className="p-4 font-bold text-right">P&L</th>
+            {showAiInsights && <th className="p-4 font-bold text-center">AI Insight</th>}
           </tr>
         </thead>
         <tbody>
           {portfolio.map((item, idx) => {
             const currentPrice = marketData[item.symbol]?.price || item.avgCost;
+            
+            const investedAmount = item.totalCost;
             const currentValue = currentPrice * item.quantity;
-            const pl = currentValue - item.totalCost;
-            const plPercent = item.totalCost > 0 ? (pl / item.totalCost) * 100 : 0;
+            
+            const pl = currentValue - investedAmount;
+            const plPercent = investedAmount > 0 ? (pl / investedAmount) * 100 : 0;
             const isProfit = pl >= 0;
             
             const analysis = analysisData[item.symbol];
 
             return (
-              <tr key={`${item.symbol}-${item.broker}-${idx}`} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors group">
+              <tr key={`${item.symbol}-${item.broker}-${idx}`} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors text-sm">
                 <td className="p-4 text-center">
                   <button
                     onClick={() => onSell(item.symbol, item.broker)}
@@ -84,26 +90,34 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({
                     SELL
                   </button>
                 </td>
-                <td className="p-4 font-bold text-white">{item.symbol}</td>
-                <td className="p-4 text-center">
-                    <div className="flex items-center justify-center gap-1" title={item.type}>
+                <td className="p-4">
+                    <div className="flex items-center gap-2">
                         {getAssetIcon(item.type)}
+                        <div>
+                            <div className="font-bold text-white">{item.symbol}</div>
+                            {!hideBroker && getBrokerBadge(item.broker)}
+                        </div>
                     </div>
                 </td>
-                {!hideBroker && (
-                    <td className="p-4">
-                        {getBrokerBadge(item.broker)}
-                    </td>
-                )}
                 <td className="p-4 text-right text-slate-300 font-mono">{item.quantity.toFixed(item.type === 'CRYPTO' ? 4 : 0)}</td>
-                <td className="p-4 text-right text-slate-300 font-mono">₹{item.avgCost.toFixed(2)}</td>
-                <td className="p-4 text-right text-slate-300 font-mono">₹{currentPrice.toFixed(2)}</td>
-                <td className={`p-4 text-right font-medium font-mono ${isProfit ? 'text-success' : 'text-danger'}`}>
+                <td className="p-4 text-right text-slate-400 font-mono text-xs">{formatCurrency(item.avgCost)}</td>
+                <td className="p-4 text-right text-white font-mono font-medium">{formatCurrency(currentPrice)}</td>
+                
+                <td className="p-4 text-right text-slate-400 font-mono text-xs">
+                    {formatCurrency(investedAmount)}
+                </td>
+                
+                <td className="p-4 text-right text-white font-mono font-bold">
+                    {formatCurrency(currentValue)}
+                </td>
+
+                <td className={`p-4 text-right font-bold font-mono ${isProfit ? 'text-success' : 'text-danger'}`}>
                   <div className="flex flex-col items-end">
-                    <span>{pl > 0 ? '+' : ''}{pl.toFixed(2)}</span>
-                    <span className="text-xs opacity-75">({plPercent.toFixed(2)}%)</span>
+                    <span>{pl > 0 ? '+' : ''}{formatCurrency(pl)}</span>
+                    <span className="text-[10px] opacity-75">({plPercent.toFixed(2)}%)</span>
                   </div>
                 </td>
+                
                 {showAiInsights && (
                     <td className="p-4 text-center">
                     {analysis ? (
@@ -115,20 +129,9 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({
                             }`}>
                                 {analysis.action}
                             </span>
-                            
                             {/* Tooltip */}
-                            <div className="absolute right-0 top-8 w-64 p-3 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 hidden group-hover/tooltip:block text-left animate-fade-in">
-                                <div className="text-xs font-bold text-white mb-2 flex items-center gap-1">
-                                    <Info size={12}/> AI Analysis
-                                </div>
-                                <div className="space-y-1 text-[10px] text-slate-300">
-                                    <div className="flex justify-between"><span>Target:</span> <span className="font-mono text-white">₹{analysis.targetPrice}</span></div>
-                                    <div className="flex justify-between"><span>Dividend:</span> <span className="font-mono text-white">{analysis.dividendYield}</span></div>
-                                    <div className="flex justify-between"><span>3Y CAGR:</span> <span className="font-mono text-white">{analysis.cagr}</span></div>
-                                    <div className="pt-2 mt-1 border-t border-slate-700 text-slate-400 italic">
-                                        "{analysis.reason}"
-                                    </div>
-                                </div>
+                            <div className="absolute right-10 top-0 w-48 p-3 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 hidden group-hover/tooltip:block text-left">
+                                <div className="text-[10px] text-slate-300 italic">"{analysis.reason}"</div>
                             </div>
                         </div>
                     ) : (
