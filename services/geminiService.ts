@@ -81,10 +81,10 @@ export const fetchTopStockPicks = async (
         })
         .sort((a, b) => (b.changePercent || 0) - (a.changePercent || 0));
 
-      const topIntraday = scored.slice(0, 2);
-      const topBtst = scored.slice(2, 4);
-      const topWeekly = scored.slice(4, 6);
-      const topMonthly = scored.slice(6, 7);
+      const topIntraday = scored.slice(0, 4);
+      const topBtst = scored.slice(4, 8);
+      const topWeekly = scored.slice(8, 12);
+      const topMonthly = scored.slice(12, 18);
 
       const toRec = (
         s: { symbol: string; price: number; changePercent: number },
