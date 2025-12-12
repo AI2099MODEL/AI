@@ -125,6 +125,7 @@ export const fetchTopStockPicks = async (
 };
 
 
+
       // Build a simple array with change %
       const scored = results
         .map((r) => {
