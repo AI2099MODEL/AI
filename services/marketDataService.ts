@@ -6,6 +6,7 @@ const YAHOO_CHART_BASE = "https://query1.finance.yahoo.com/v8/finance/chart/";
 export const USD_INR_RATE = 84.50; // Exported for UI conversions
 
 // Realistic Base Prices in INR for Simulation Fallback
+// For Crypto, we use standard USDT equivalent rate
 const INR_BASE_PRICES: { [key: string]: number } = {
     // MCX (Per Lot/Unit Standard)
     'GOLD': 76500,       // Per 10g
@@ -17,15 +18,15 @@ const INR_BASE_PRICES: { [key: string]: number } = {
     'ALUMINIUM': 245,
     'LEAD': 188,
 
-    // CRYPTO (Converted to INR approx)
-    'BTC': 96000 * USD_INR_RATE,
-    'ETH': 3600 * USD_INR_RATE,
-    'SOL': 240 * USD_INR_RATE,
-    'BNB': 650 * USD_INR_RATE,
-    'XRP': 2.5 * USD_INR_RATE,
-    'ADA': 1.1 * USD_INR_RATE,
-    'DOGE': 0.4 * USD_INR_RATE,
-    'SHIB': 0.00003 * USD_INR_RATE,
+    // CRYPTO (Converted to INR approx for simulations)
+    'BTC/USDT': 96000 * USD_INR_RATE,
+    'ETH/USDT': 3600 * USD_INR_RATE,
+    'SOL/USDT': 240 * USD_INR_RATE,
+    'BNB/USDT': 650 * USD_INR_RATE,
+    'XRP/USDT': 2.5 * USD_INR_RATE,
+    'ADA/USDT': 1.1 * USD_INR_RATE,
+    'DOGE/USDT': 0.4 * USD_INR_RATE,
+    'SHIB/USDT': 0.00003 * USD_INR_RATE,
 
     // FOREX
     'USDINR': 84.50,
@@ -50,15 +51,15 @@ const TICKER_MAP: { [key: string]: string } = {
     'GBPINR': 'GBPINR=X',
     'EURUSD': 'EURUSD=X',
 
-    // CRYPTO
-    'BTC': 'BTC-USD',
-    'ETH': 'ETH-USD',
-    'SOL': 'SOL-USD',
-    'BNB': 'BNB-USD',
-    'XRP': 'XRP-USD',
-    'ADA': 'ADA-USD',
-    'DOGE': 'DOGE-USD',
-    'SHIB': 'SHIB-USD'
+    // CRYPTO (Map USDT pairs to Yahoo USD tickers)
+    'BTC/USDT': 'BTC-USD',
+    'ETH/USDT': 'ETH-USD',
+    'SOL/USDT': 'SOL-USD',
+    'BNB/USDT': 'BNB-USD',
+    'XRP/USDT': 'XRP-USD',
+    'ADA/USDT': 'ADA-USD',
+    'DOGE/USDT': 'DOGE-USD',
+    'SHIB/USDT': 'SHIB-USD'
 };
 
 // --- API FETCHERS ---
@@ -115,7 +116,8 @@ function generateSimulatedData(symbol: string, basePrice: number): StockData {
     
     // Add "live" jitter for real-time feel on refresh
     // For Crypto, make it slightly more volatile
-    const volatilityMultiplier = symbol === 'BTC' || symbol === 'ETH' ? 0.001 : 0.0005;
+    const isCrypto = symbol.includes('BTC') || symbol.includes('ETH') || symbol.includes('USDT');
+    const volatilityMultiplier = isCrypto ? 0.001 : 0.0005;
     const liveJitter = (Math.random() - 0.5) * (basePrice * volatilityMultiplier);
     const finalPrice = lastCandle.close + liveJitter;
 
@@ -182,8 +184,8 @@ export const fetchRealStockData = async (symbol: string, settings: AppSettings):
     let needsConversion = false;
     let basePrice = INR_BASE_PRICES[symbol.toUpperCase()] || 1000;
 
-    // Detect Crypto to set conversion flag
-    if (['BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'ADA', 'DOGE', 'SHIB'].includes(symbol.toUpperCase())) {
+    // Detect Crypto to set conversion flag (USDT pairs usually need USD -> INR conversion for internal math)
+    if (symbol.toUpperCase().endsWith('/USDT')) {
         needsConversion = true; // Convert USD result to INR
     }
     

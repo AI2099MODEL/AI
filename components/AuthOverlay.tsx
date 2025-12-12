@@ -100,7 +100,7 @@ export const AuthOverlay: React.FC<AuthOverlayProps> = ({ onLogin }) => {
                   className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2 group shadow-lg shadow-blue-500/20 mt-6"
                >
                    <Rocket size={20} className="group-hover:-translate-y-1 transition-transform" />
-                   {isRegistering ? 'Create Account' : 'Login to Dashboard'}
+                   {isRegistering ? 'Create Account' : 'Login & Save Preferences'}
                </button>
            </form>
            

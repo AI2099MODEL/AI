@@ -107,7 +107,7 @@ export const fetchTopStockPicks = async (
 
   // 2. CRYPTO - ALWAYS FETCH TOP 5 for "Market Page Trend Board"
   if (markets.crypto) {
-      const cryptos = ['BTC', 'ETH', 'SOL', 'XRP', 'BNB'];
+      const cryptos = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'XRP/USDT', 'BNB/USDT'];
       
       const cryptoPromises = cryptos.map(async (c) => {
           try {
@@ -128,7 +128,7 @@ export const fetchTopStockPicks = async (
                     reason: `${recReason} - Score: ${data.technicals.score.toFixed(0)}`,
                     riskLevel: 'High',
                     targetPrice: data.price * (recReason.includes('Buy') ? 1.05 : 0.95),
-                    lotSize: c === 'BTC' ? 0.01 : 1,
+                    lotSize: c === 'BTC/USDT' ? 0.01 : 1,
                     timeframe: 'INTRADAY',
                     chartPattern: data.technicals.activeSignals[0] || "Volatile"
                 } as StockRecommendation;

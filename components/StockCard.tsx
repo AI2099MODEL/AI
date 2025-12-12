@@ -93,7 +93,7 @@ export const StockCard: React.FC<StockCardProps> = ({ stock, marketData, onTrade
   const usdPrice = stock.type === 'CRYPTO' ? price / USD_INR_RATE : null;
 
   return (
-    <div className={`rounded-xl p-4 border ${theme.border} bg-gradient-to-br ${theme.bgGradient} transition-all duration-300 shadow-lg group relative overflow-hidden ${theme.glow}`}>
+    <div className={`rounded-xl p-3 md:p-4 border ${theme.border} bg-gradient-to-br ${theme.bgGradient} transition-all duration-300 shadow-lg group relative overflow-hidden ${theme.glow}`}>
       {/* Background Decorator */}
       <div className={`absolute -right-6 -top-6 opacity-5 rotate-12 ${theme.iconColor}`}>
            <AssetIcon size={120} />
@@ -101,102 +101,90 @@ export const StockCard: React.FC<StockCardProps> = ({ stock, marketData, onTrade
 
       {/* Score Badge */}
       <div className="absolute top-0 right-0 p-2 text-right z-10">
-         <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700 rounded-lg px-2 py-1 text-xs font-bold font-mono flex items-center justify-end gap-1 mb-1 shadow-sm">
+         <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700 rounded-lg px-2 py-1 text-[10px] md:text-xs font-bold font-mono flex items-center justify-end gap-1 mb-1 shadow-sm">
             <Zap size={10} className="text-yellow-400 fill-yellow-400" />
             <span className="text-slate-200">Score: {score.toFixed(0)}</span>
          </div>
-         <div className={`text-[10px] uppercase tracking-wider ${strengthColor} bg-slate-900/50 px-1.5 py-0.5 rounded shadow-sm`}>
+         <div className={`text-[9px] md:text-[10px] uppercase tracking-wider ${strengthColor} bg-slate-900/50 px-1.5 py-0.5 rounded shadow-sm`}>
              {strength}
          </div>
       </div>
 
-      <div className="flex justify-between items-start mb-3 pr-20 relative z-10">
+      <div className="flex justify-between items-start mb-2 pr-20 relative z-10">
         <div>
-          <h3 className={`text-lg font-bold flex items-center gap-2 ${theme.accent}`}>
-            <AssetIcon size={18} className={theme.iconColor} />
+          <h3 className={`text-base md:text-lg font-bold flex items-center gap-2 ${theme.accent}`}>
+            <AssetIcon size={16} className={theme.iconColor} />
             {stock.symbol}
-            {stock.timeframe && (
-                <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase shadow-sm ${getTimeframeColor(stock.timeframe)}`}>
-                    {stock.timeframe}
-                </span>
-            )}
           </h3>
-          {stock.name !== stock.symbol && (
-              <p className="text-xs text-slate-400 font-medium">{stock.name}</p>
-          )}
+          <div className="flex flex-wrap gap-1 mt-1">
+              {stock.timeframe && (
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase shadow-sm ${getTimeframeColor(stock.timeframe)}`}>
+                      {stock.timeframe}
+                  </span>
+              )}
+          </div>
         </div>
       </div>
 
-      <div className="flex justify-between items-end mb-4 relative z-10">
-          <div>
-            <div className="flex items-baseline gap-2">
-                <div className="text-2xl font-mono font-bold text-white tracking-tight drop-shadow-sm">
+      <div className="flex justify-between items-end mb-3 relative z-10">
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-baseline gap-x-2">
+                <div className="text-lg md:text-2xl font-mono font-bold text-white tracking-tight drop-shadow-sm whitespace-nowrap">
                     ₹{price.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                 </div>
                 {usdPrice && (
-                    <div className="text-xs font-mono text-slate-400 font-medium">
+                    <div className="text-[10px] md:text-xs font-mono text-slate-400 font-medium">
                         (${usdPrice.toLocaleString('en-US', { maximumFractionDigits: 2 })})
                     </div>
                 )}
             </div>
             
-            <div className={`text-xs flex items-center gap-1 font-bold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+            <div className={`text-[10px] md:text-xs flex items-center gap-1 font-bold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
                 {isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                 {change > 0 ? '+' : ''}{change.toFixed(2)}%
             </div>
           </div>
-          <div className="text-right">
-             <div className="text-[10px] text-slate-400 flex items-center justify-end gap-1 mb-0.5 font-bold uppercase tracking-wide"><Target size={10}/> Target</div>
-             <div className="text-lg font-bold text-green-400 font-mono drop-shadow-sm">₹{stock.targetPrice.toFixed(2)}</div>
+          <div className="text-right pl-2">
+             <div className="text-[9px] md:text-[10px] text-slate-400 flex items-center justify-end gap-1 mb-0.5 font-bold uppercase tracking-wide"><Target size={10}/> Target</div>
+             <div className="text-base md:text-lg font-bold text-green-400 font-mono drop-shadow-sm">₹{stock.targetPrice.toFixed(2)}</div>
           </div>
       </div>
 
       {/* AI Chart Pattern Logic */}
-      <div className="flex items-center gap-2 mb-3 bg-slate-900/60 border border-slate-700/50 p-2 rounded-lg relative z-10 backdrop-blur-sm">
+      <div className="flex items-center gap-2 mb-3 bg-slate-900/60 border border-slate-700/50 p-1.5 md:p-2 rounded-lg relative z-10 backdrop-blur-sm">
           <Scan size={14} className="text-indigo-400 flex-shrink-0" />
-          <div className="text-xs">
+          <div className="text-[10px] md:text-xs leading-tight">
               <span className="text-indigo-300 font-bold block">AI Pattern:</span>
               <span className="text-slate-200 italic">{stock.chartPattern || "Trend Follow"}</span>
           </div>
       </div>
 
-      {stock.lotSize !== 1 && (
-          <div className="flex items-center gap-1 text-[10px] text-slate-500 mb-2 font-mono">
-              <Box size={10} /> Lot: {stock.lotSize}
-          </div>
-      )}
-
-      <div className="mb-4 space-y-2 relative z-10">
+      <div className="mb-3 space-y-2 relative z-10">
         {/* Active Technical Signals Pills */}
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1">
             {tech?.activeSignals.slice(0, 3).map((sig, i) => (
-                <span key={i} className={`text-[10px] px-2 py-0.5 rounded-full border shadow-sm ${theme.badgeBg} border-white/5`}>
+                <span key={i} className={`text-[9px] md:text-[10px] px-1.5 py-0.5 rounded-full border shadow-sm ${theme.badgeBg} border-white/5`}>
                     {sig}
                 </span>
             ))}
-            {(!tech?.activeSignals || tech.activeSignals.length === 0) && (
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-500 border border-slate-700">
-                    Consolidating
-                </span>
-            )}
         </div>
 
         {/* Detailed Metrics Strip */}
-        <div className="grid grid-cols-3 gap-px bg-slate-700/30 rounded-lg overflow-hidden text-[10px] font-mono mt-2 border border-slate-700/30">
-            <div className="bg-slate-900/60 p-1.5 text-center backdrop-blur-sm">
-                <span className="text-slate-500 block text-[9px]">RSI</span>
+        <div className="grid grid-cols-3 gap-px bg-slate-700/30 rounded-lg overflow-hidden text-[9px] md:text-[10px] font-mono mt-2 border border-slate-700/30">
+            <div className="bg-slate-900/60 p-1 text-center backdrop-blur-sm">
+                <span className="text-slate-500 block text-[8px] md:text-[9px]">RSI</span>
                 <span className={`font-bold ${tech?.rsi < 30 ? 'text-green-400' : tech?.rsi > 70 ? 'text-red-400' : 'text-slate-300'}`}>
                     {tech?.rsi.toFixed(0)}
                 </span>
             </div>
-            <div className="bg-slate-900/60 p-1.5 text-center backdrop-blur-sm">
-                <span className="text-slate-500 block text-[9px]">MACD</span>
+            <div className="bg-slate-900/60 p-1 text-center backdrop-blur-sm">
+                <span className="text-slate-500 block text-[8px] md:text-[9px]">MACD</span>
                 <span className={`font-bold ${tech?.macd.histogram > 0 ? 'text-green-400' : 'text-red-400'}`}>
                     {tech?.macd.macd.toFixed(1)}
                 </span>
             </div>
-            <div className="bg-slate-900/60 p-1.5 text-center backdrop-blur-sm">
-                <span className="text-slate-500 block text-[9px]">EMA</span>
+            <div className="bg-slate-900/60 p-1 text-center backdrop-blur-sm">
+                <span className="text-slate-500 block text-[8px] md:text-[9px]">EMA</span>
                 <span className="text-slate-300 font-bold">
                     {tech?.ema.ema9.toFixed(0)}
                 </span>
@@ -206,7 +194,7 @@ export const StockCard: React.FC<StockCardProps> = ({ stock, marketData, onTrade
 
       <button
         onClick={() => onTrade(stock)}
-        className={`w-full py-2.5 rounded-lg font-bold text-white transition-all flex items-center justify-center gap-2 text-sm shadow-lg hover:shadow-xl hover:brightness-110 active:scale-[0.98] relative z-10 ${
+        className={`w-full py-2 md:py-2.5 rounded-lg font-bold text-white transition-all flex items-center justify-center gap-2 text-xs md:text-sm shadow-lg hover:shadow-xl hover:brightness-110 active:scale-[0.98] relative z-10 ${
             stock.type === 'CRYPTO' ? 'bg-purple-600 shadow-purple-500/20' :
             stock.type === 'MCX' ? 'bg-yellow-600 shadow-yellow-500/20' :
             stock.type === 'FOREX' ? 'bg-emerald-600 shadow-emerald-500/20' :

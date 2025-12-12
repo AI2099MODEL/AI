@@ -512,7 +512,7 @@ export const STATIC_FOREX_LIST = [
 ];
 
 export const STATIC_CRYPTO_LIST = [
-    "BTC", "ETH", "SOL", "BNB", "XRP", "ADA"
+    "BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT", "ADA/USDT"
 ];
 
 let NAME_CACHE: Map<string, string> | null = null;
@@ -557,10 +557,14 @@ export const getCompanyName = (symbol: string): string => {
     // Common Commodities
     if (STATIC_MCX_LIST.includes(upperSymbol)) return upperSymbol + " Futures";
     if (STATIC_FOREX_LIST.includes(upperSymbol)) return upperSymbol.substring(0,3) + "/" + upperSymbol.substring(3);
-    if (STATIC_CRYPTO_LIST.includes(upperSymbol)) return upperSymbol + " Crypto";
+    
+    // Crypto
+    if (STATIC_CRYPTO_LIST.includes(upperSymbol)) {
+        return upperSymbol.replace('/USDT', '') + " Crypto";
+    }
     
     // Force .NS for unknown stocks if not special
-    if (!upperSymbol.includes('.') && !STATIC_MCX_LIST.includes(upperSymbol) && !STATIC_FOREX_LIST.includes(upperSymbol) && !STATIC_CRYPTO_LIST.includes(upperSymbol)) {
+    if (!upperSymbol.includes('.') && !STATIC_MCX_LIST.includes(upperSymbol) && !STATIC_FOREX_LIST.includes(upperSymbol) && !upperSymbol.includes('/USDT')) {
         return upperSymbol + '.NS';
     }
 

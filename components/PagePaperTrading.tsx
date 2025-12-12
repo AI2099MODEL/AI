@@ -40,6 +40,7 @@ export const PagePaperTrading: React.FC<PagePaperTradingProps> = ({
   const pnlPercent = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
   
   const availableCash = funds.stock + funds.mcx + funds.forex + funds.crypto;
+  const totalAccountValue = availableCash + currentVal;
 
   // Breakdown Calculation
   const getAssetStats = (type: AssetType) => {
@@ -69,21 +70,21 @@ export const PagePaperTrading: React.FC<PagePaperTradingProps> = ({
            <div className="flex items-center gap-3">
               <div className="p-3 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-xl text-indigo-400 border border-indigo-500/30"><Wallet size={24} /></div>
               <div>
-                <h1 className="text-2xl font-bold text-white tracking-tight">Paper Trading</h1>
-                <p className="text-xs text-slate-400 font-medium">Virtual Portfolio & Algo Bots</p>
+                <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">Paper Trading</h1>
+                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Virtual Portfolio & Bots</p>
               </div>
            </div>
            
            <div className="flex bg-slate-800/80 backdrop-blur-sm rounded-lg p-1 border border-slate-700">
                <button 
                   onClick={() => setActiveTab('PORTFOLIO')}
-                  className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${activeTab === 'PORTFOLIO' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
+                  className={`px-3 py-1.5 rounded-md text-[10px] md:text-xs font-bold transition-all ${activeTab === 'PORTFOLIO' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
                >
                   Portfolio
                </button>
                <button 
                   onClick={() => setActiveTab('AUTO_BOT')}
-                  className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${activeTab === 'AUTO_BOT' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'text-slate-400 hover:text-white'}`}
+                  className={`px-3 py-1.5 rounded-md text-[10px] md:text-xs font-bold transition-all ${activeTab === 'AUTO_BOT' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'text-slate-400 hover:text-white'}`}
                >
                   Auto-Bot
                </button>
@@ -91,32 +92,32 @@ export const PagePaperTrading: React.FC<PagePaperTradingProps> = ({
        </div>
 
         {/* Summary Card */}
-       <div className="bg-gradient-to-br from-indigo-900 via-slate-900 to-black rounded-2xl border border-indigo-500/30 p-6 shadow-2xl relative overflow-hidden mb-6 group">
-            <div className="absolute -top-10 -right-10 opacity-10 rotate-12 group-hover:rotate-45 transition-transform duration-700 text-indigo-400"><PieChart size={200}/></div>
+       <div className="bg-gradient-to-br from-indigo-900 via-slate-900 to-black rounded-2xl border border-indigo-500/30 p-5 md:p-6 shadow-2xl relative overflow-hidden mb-6 group">
+            <div className="absolute -top-10 -right-10 opacity-10 rotate-12 group-hover:rotate-45 transition-transform duration-700 text-indigo-400"><PieChart size={180} /></div>
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
             
-            <div className="grid grid-cols-2 gap-8 relative z-10 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 relative z-10 mb-4">
                 <div>
-                    <p className="text-indigo-300 text-xs font-bold uppercase tracking-wider mb-1 flex items-center gap-1"><TrendingUp size={12}/> Total P&L</p>
-                    <div className={`text-3xl font-mono font-bold tracking-tight ${totalPnl >= 0 ? 'text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.3)]' : 'text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.3)]'}`}>
-                        {totalPnl >= 0 ? '+' : ''}₹{totalPnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    <p className="text-indigo-300 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1 flex items-center gap-1"><TrendingUp size={12}/> Total P&L</p>
+                    <div className={`text-2xl md:text-3xl font-mono font-bold tracking-tight break-words ${totalPnl >= 0 ? 'text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.3)]' : 'text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.3)]'}`}>
+                        {totalPnl >= 0 ? '+' : ''}₹{totalPnl.toLocaleString(undefined, {maximumFractionDigits: 0})}
                     </div>
-                    <div className={`text-sm font-bold mt-1 px-2 py-0.5 rounded w-fit ${totalPnl >= 0 ? 'bg-green-500/20 text-green-300 border border-green-500/30' : 'bg-red-500/20 text-red-300 border border-red-500/30'}`}>
+                    <div className={`text-xs md:text-sm font-bold mt-1 px-2 py-0.5 rounded w-fit ${totalPnl >= 0 ? 'bg-green-500/20 text-green-300 border border-green-500/30' : 'bg-red-500/20 text-red-300 border border-red-500/30'}`}>
                         {pnlPercent.toFixed(2)}% Return
                     </div>
                 </div>
-                <div className="text-right">
-                    <p className="text-indigo-300 text-xs font-bold uppercase tracking-wider mb-1">Total Invested</p>
-                    <div className="text-2xl font-mono font-bold text-white">
-                        ₹{totalCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                <div className="text-left sm:text-right">
+                    <p className="text-indigo-300 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Total Invested</p>
+                    <div className="text-lg md:text-2xl font-mono font-bold text-white break-words">
+                        ₹{totalCost.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}
                     </div>
-                    <p className="text-xs text-slate-400 mt-2 font-medium">Cur. Value: <span className="text-white">₹{currentVal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></p>
+                    <p className="text-[10px] md:text-xs text-slate-400 mt-2 font-medium">Cur. Value: <span className="text-white">₹{currentVal.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</span></p>
                 </div>
             </div>
 
-            <div className="bg-black/30 backdrop-blur-md p-3 rounded-xl border border-white/10 flex justify-between items-center">
-                 <div className="flex items-center gap-2 text-indigo-200 text-xs font-bold"><Wallet size={14} className="text-indigo-400"/> Available Buying Power</div>
-                 <div className="font-mono font-bold text-white text-lg">₹{availableCash.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            <div className="bg-black/30 backdrop-blur-md p-3 rounded-xl border border-white/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                 <div className="flex items-center gap-2 text-indigo-200 text-[10px] md:text-xs font-bold"><Wallet size={14} className="text-indigo-400"/> Available Buying Power</div>
+                 <div className="font-mono font-bold text-white text-base md:text-lg break-all">₹{availableCash.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</div>
             </div>
        </div>
 
@@ -127,21 +128,21 @@ export const PagePaperTrading: React.FC<PagePaperTradingProps> = ({
                 {/* Detailed Asset Performance Table */}
                 <div className="bg-surface rounded-xl border border-slate-800 overflow-hidden shadow-lg">
                     <div className="px-5 py-4 border-b border-slate-700/50 bg-slate-800/30 flex items-center justify-between">
-                        <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                        <h3 className="text-xs md:text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
                             <TrendingUp size={14} className="text-blue-400"/> Asset Allocation
                         </h3>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm">
-                            <thead className="text-xs text-slate-500 bg-slate-900/50 uppercase tracking-wider">
+                            <thead className="text-[10px] md:text-xs text-slate-500 bg-slate-900/50 uppercase tracking-wider">
                                 <tr>
-                                    <th className="px-5 py-3 font-medium">Asset Class</th>
-                                    <th className="px-5 py-3 font-medium text-right">Invested</th>
-                                    <th className="px-5 py-3 font-medium text-right">P&L</th>
-                                    <th className="px-5 py-3 font-medium text-right">Return</th>
+                                    <th className="px-4 md:px-5 py-3 font-medium">Asset Class</th>
+                                    <th className="px-4 md:px-5 py-3 font-medium text-right">Invested</th>
+                                    <th className="px-4 md:px-5 py-3 font-medium text-right">P&L</th>
+                                    <th className="px-4 md:px-5 py-3 font-medium text-right">Return</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-800/50">
+                            <tbody className="divide-y divide-slate-800/50 text-[10px] md:text-sm">
                                 {assetTypes.map((asset) => {
                                     const stats = getAssetStats(asset.type);
                                     if (stats.invested <= 0) return null;
@@ -149,19 +150,19 @@ export const PagePaperTrading: React.FC<PagePaperTradingProps> = ({
                                     
                                     return (
                                         <tr key={asset.type} className="hover:bg-slate-800/20 transition-colors">
-                                            <td className="px-5 py-3">
-                                                <div className="flex items-center gap-3 text-white font-medium">
-                                                    <div className="p-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300">{asset.icon}</div>
+                                            <td className="px-4 md:px-5 py-3">
+                                                <div className="flex items-center gap-2 md:gap-3 text-white font-medium">
+                                                    <div className="p-1.5 md:p-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300">{asset.icon}</div>
                                                     <span>{asset.label}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-5 py-3 text-right text-slate-400 font-mono">
+                                            <td className="px-4 md:px-5 py-3 text-right text-slate-400 font-mono">
                                                 ₹{stats.invested.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}
                                             </td>
-                                            <td className={`px-5 py-3 text-right font-mono font-bold ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
+                                            <td className={`px-4 md:px-5 py-3 text-right font-mono font-bold ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
                                                 {isProfit ? '+' : ''}{stats.pnl.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}
                                             </td>
-                                            <td className="px-5 py-3 text-right">
+                                            <td className="px-4 md:px-5 py-3 text-right">
                                                 <span className={`text-[10px] px-2 py-0.5 rounded border font-mono ${isProfit ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
                                                     {isProfit ? '+' : ''}{stats.pct.toFixed(2)}%
                                                 </span>
@@ -184,7 +185,7 @@ export const PagePaperTrading: React.FC<PagePaperTradingProps> = ({
                 {/* Holdings Table */}
                 <div>
                     <div className="flex justify-between items-center mb-3">
-                        <h3 className="text-lg font-bold text-white flex items-center gap-2"><Sparkles size={16} className="text-yellow-400"/> Open Positions</h3>
+                        <h3 className="text-sm md:text-lg font-bold text-white flex items-center gap-2"><Sparkles size={16} className="text-yellow-400"/> Open Positions</h3>
                         <button 
                             onClick={onAnalyze} 
                             disabled={isAnalyzing}
