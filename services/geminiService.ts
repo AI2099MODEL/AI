@@ -23,39 +23,108 @@ export const fetchTopStockPicks = async (
   const currentMinutes = getISTTimeMinutes();
   const isPostMarket = currentMinutes > 930;
 
-  try {
-    let universe = stockUniverse;
+  const shuffle = <T,>(array: T[]): T[] => {
+    const a = [...array];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
 
-    // If no explicit universe passed, use static NSE list
-    if (universe.length === 0 && markets.stocks) {
-      universe = await checkAndRefreshStockList();
+  let universe = stockUniverse;
+
+  // If no explicit universe passed, use static NSE list
+  if (universe.length === 0 && markets.stocks) {
+    universe = await checkAndRefreshStockList();
+  }
+
+  const picks: StockRecommendation[] = [];
+
+  if (markets.stocks) {
+    // Shuffle to avoid alphabetical bias
+    const shuffled = shuffle(universe);
+    // Limit to avoid hammering Yahoo / yfinance [web:52][web:10]
+    const sample = shuffled.slice(0, 80);
+
+    const results: { symbol: string; data: MarketData }[] = [];
+
+    for (const sym of sample) {
+      try {
+        const data = await fetchRealStockData(sym, {
+          dhanClientId: "",
+          dhanAccessToken: "",
+          shoonyaUserId: ""
+        } as any);
+
+        if (data && data.price) {
+          const upper = sym.toUpperCase();
+          results.push({
+            symbol: upper,
+            data: { [upper]: data }
+          });
+        }
+      } catch {
+        // ignore bad/failed symbols
+      }
     }
 
-    const picks: StockRecommendation[] = [];
+    const scored = results
+      .map((r) => {
+        const sd = r.data[r.symbol];
+        return {
+          symbol: r.symbol,
+          price: sd.price,
+          changePercent: sd.changePercent
+        };
+      })
+      .sort((a, b) => (b.changePercent || 0) - (a.changePercent || 0));
 
-    if (markets.stocks) {
-      // Limit to avoid hammering Yahoo
-      const sample = universe.slice(0, 80); // you can tune this
+    const topIntraday = scored.slice(0, 2);
+    const topBtst = scored.slice(2, 4);
+    const topWeekly = scored.slice(4, 6);
+    const topMonthly = scored.slice(6, 7);
 
-      const results: { symbol: string; data: MarketData | null }[] = [];
+    const toRec = (
+      s: { symbol: string; price: number; changePercent: number },
+      timeframe: "INTRADAY" | "BTST" | "WEEKLY" | "MONTHLY"
+    ): StockRecommendation => {
+      const name = getCompanyName(s.symbol);
+      const factor =
+        timeframe === "INTRADAY"
+          ? 0.01
+          : timeframe === "BTST"
+          ? 0.02
+          : timeframe === "WEEKLY"
+          ? 0.03
+          : 0.05;
+      const target = s.price * (1 + factor);
 
-      for (const sym of sample) {
-        try {
-          const data = await fetchRealStockData(sym, {
-            dhanClientId: "",
-            dhanAccessToken: "",
-            shoonyaUserId: ""
-          } as any);
-          if (data && data.price) {
-            results.push({
-              symbol: sym.toUpperCase(),
-              data: { [sym.toUpperCase()]: data }
-            });
-          }
-        } catch {
-          // ignore bad symbols
-        }
-      }
+      return {
+        symbol: s.symbol,
+        name,
+        type: "STOCK",
+        sector: "NSE Stock",
+        currentPrice: s.price,
+        reason: `Momentum pick (${timeframe}, ${isPostMarket ? "EOD" : "Live"})`,
+        riskLevel: timeframe === "MONTHLY" ? "Low" : "Medium",
+        targetPrice: target,
+        lotSize: 1,
+        timeframe,
+        chartPattern: "Price Action"
+      };
+    };
+
+    picks.push(...topIntraday.map((s) => toRec(s, "INTRADAY")));
+    picks.push(...topBtst.map((s) => toRec(s, "BTST")));
+    picks.push(...topWeekly.map((s) => toRec(s, "WEEKLY")));
+    picks.push(...topMonthly.map((s) => toRec(s, "MONTHLY")));
+  }
+
+  // No fallback: if nothing could be fetched, picks will just be []
+  return picks;
+};
+
 
       // Build a simple array with change %
       const scored = results
