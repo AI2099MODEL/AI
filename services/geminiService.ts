@@ -96,10 +96,11 @@ export const fetchTopStockPicks = async (
 
       const stockResults = await Promise.all(promises);
       
+      // Sort by Technical Score (High to Low) and take Top 20
       const sortedResults = stockResults
         .filter((r): r is { rec: StockRecommendation, score: number } => r !== null)
         .sort((a, b) => b.score - a.score)
-        .slice(0, 20); // Top 20 Stocks
+        .slice(0, 20); 
         
       sortedResults.forEach(r => picks.push(r.rec));
   }
@@ -142,7 +143,7 @@ export const fetchTopStockPicks = async (
 
   // 3. MCX
   if (markets.mcx) {
-      const mcx = ['GOLD', 'SILVER', 'CRUDEOIL'];
+      const mcx = ['GOLD', 'SILVER', 'CRUDEOIL', 'NATURALGAS', 'COPPER'];
       for (const m of mcx) {
           const data = await fetchRealStockData(m, dummySettings);
           if (data) {
@@ -152,12 +153,35 @@ export const fetchTopStockPicks = async (
                 type: 'MCX',
                 sector: 'Commodity',
                 currentPrice: data.price,
-                reason: "Commodity Trend",
+                reason: `Commodity Trend (${data.technicals.signalStrength})`,
                 riskLevel: 'Medium',
                 targetPrice: data.price * 1.02,
                 lotSize: 1,
                 timeframe: 'WEEKLY',
-                chartPattern: "Trend"
+                chartPattern: data.technicals.activeSignals[0] || "Trend"
+              });
+          }
+      }
+  }
+
+  // 4. FOREX
+  if (markets.forex) {
+      const forex = ['USDINR', 'EURINR', 'GBPINR', 'EURUSD', 'GBPUSD'];
+      for (const f of forex) {
+          const data = await fetchRealStockData(f, dummySettings);
+          if (data) {
+               picks.push({
+                symbol: f,
+                name: getCompanyName(f),
+                type: 'FOREX',
+                sector: 'Currency',
+                currentPrice: data.price,
+                reason: `Forex Momentum (${data.technicals.score.toFixed(0)})`,
+                riskLevel: 'High',
+                targetPrice: data.price * 1.01,
+                lotSize: 1000,
+                timeframe: 'INTRADAY',
+                chartPattern: "Scalping"
               });
           }
       }

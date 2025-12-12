@@ -82,9 +82,9 @@ export const PageMarket: React.FC<PageMarketProps> = ({
           </div>
         </div>
         
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {isLoading ? (
-            <div className="h-24 bg-surface rounded-xl border border-slate-800 animate-pulse"></div>
+            Array(4).fill(0).map((_, i) => <div key={i} className="h-32 bg-surface rounded-xl border border-slate-800 animate-pulse"></div>)
           ) : (
             items.map(item => (
               <StockCard key={item.symbol} stock={item} marketData={marketData} onTrade={onTrade} />
@@ -128,11 +128,10 @@ export const PageMarket: React.FC<PageMarketProps> = ({
                     Array(4).fill(0).map((_, i) => <div key={i} className="h-32 bg-surface rounded-xl border border-slate-800 animate-pulse"></div>)
                 ) : topStocks.length > 0 ? (
                     topStocks.map((item, index) => {
-                        const score = (item as any).score;
                         return (
                             <div key={item.symbol} className="relative">
                                 {/* Rank Badge */}
-                                <div className="absolute -left-2 -top-2 w-6 h-6 bg-blue-600 text-white text-xs font-bold rounded-full flex items-center justify-center border-2 border-[#0f172a] z-10 shadow-lg">
+                                <div className="absolute -left-2 -top-2 w-6 h-6 bg-blue-600 text-white text-xs font-bold rounded-full flex items-center justify-center border-2 border-[#0f172a] z-10 shadow-lg shadow-blue-500/30">
                                     {index + 1}
                                 </div>
                                 <StockCard stock={item} marketData={marketData} onTrade={onTrade} />

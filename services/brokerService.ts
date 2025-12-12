@@ -1,3 +1,4 @@
+
 import { AppSettings, PortfolioItem, AssetType, BrokerID } from "../types";
 
 // --- PROXY HELPER ---
@@ -12,14 +13,9 @@ const fetchWithProxy = async (url: string, options: any) => {
 };
 
 // --- MOCK SERVER STATE (Fallback) ---
-let MOCK_DHAN_DB: PortfolioItem[] = [
-    { symbol: 'TATASTEEL', type: 'STOCK', quantity: 150, avgCost: 142.50, totalCost: 21375, broker: 'DHAN' },
-    { symbol: 'GOLD', type: 'MCX', quantity: 1, avgCost: 71500.00, totalCost: 71500, broker: 'DHAN' }
-];
-
-let MOCK_SHOONYA_DB: PortfolioItem[] = [
-    { symbol: 'SBIN', type: 'STOCK', quantity: 200, avgCost: 580.00, totalCost: 116000, broker: 'SHOONYA' }
-];
+// Started empty to ensure clean slate after factory reset
+let MOCK_DHAN_DB: PortfolioItem[] = [];
+let MOCK_SHOONYA_DB: PortfolioItem[] = [];
 
 // Configuration for Slicing Orders
 const SLICE_CONFIG: Record<AssetType, number> = {

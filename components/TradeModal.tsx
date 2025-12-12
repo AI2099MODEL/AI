@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { StockRecommendation, PortfolioItem, Funds } from '../types';
 import { X, DollarSign, Briefcase, Calculator } from 'lucide-react';
@@ -32,18 +33,36 @@ export const TradeModal: React.FC<TradeModalProps> = ({
   const [mode, setMode] = useState<'BUY' | 'SELL'>('BUY');
   const [selectedBroker, setSelectedBroker] = useState<any>('PAPER');
   
+  // Filter brokers based on Asset Type
+  const compatibleBrokers = React.useMemo(() => {
+    if (!stock) return ['PAPER'];
+    const type = stock.type;
+    
+    return activeBrokers.filter(b => {
+        if (b === 'PAPER') return true;
+        
+        if (type === 'STOCK') return ['DHAN', 'SHOONYA'].includes(b);
+        if (type === 'MCX') return ['DHAN', 'SHOONYA'].includes(b); // Assuming these support commodities
+        if (type === 'FOREX') return ['DHAN', 'SHOONYA'].includes(b);
+        if (type === 'CRYPTO') return ['BINANCE', 'COINDCX', 'COINSWITCH', 'ZEBPAY'].includes(b);
+        
+        return false;
+    });
+  }, [activeBrokers, stock]);
+
   useEffect(() => {
     setQuantity(stock?.lotSize ? stock.lotSize.toString() : '1');
     setAmount((currentPrice * (stock?.lotSize || 1)).toFixed(2));
     setMode(initialBroker ? 'SELL' : 'BUY'); 
     
-    if (initialBroker) {
+    if (initialBroker && compatibleBrokers.includes(initialBroker)) {
         setSelectedBroker(initialBroker);
-    } else if (activeBrokers.length > 0) {
-        if (activeBrokers.includes('PAPER')) setSelectedBroker('PAPER');
-        else setSelectedBroker(activeBrokers[0]);
+    } else if (compatibleBrokers.length > 0) {
+        // Default to Paper if available, else first compatible
+        if (compatibleBrokers.includes('PAPER')) setSelectedBroker('PAPER');
+        else setSelectedBroker(compatibleBrokers[0]);
     }
-  }, [stock, isOpen, activeBrokers, initialBroker, currentPrice]);
+  }, [stock, isOpen, compatibleBrokers, initialBroker, currentPrice]);
 
   if (!isOpen || !stock) return null;
 
@@ -53,11 +72,11 @@ export const TradeModal: React.FC<TradeModalProps> = ({
   const totalValue = parseFloat(amount) || (qtyNum * currentPrice);
   
   let availableCash = 0;
-  let fundLabel = 'Equity';
-  if (stock.type === 'MCX') { availableCash = funds.mcx; fundLabel = 'MCX'; }
-  else if (stock.type === 'FOREX') { availableCash = funds.forex; fundLabel = 'Forex'; }
-  else if (stock.type === 'CRYPTO') { availableCash = funds.crypto; fundLabel = 'Crypto'; }
-  else { availableCash = funds.stock; fundLabel = 'Equity'; }
+  // let fundLabel = 'Equity';
+  if (stock.type === 'MCX') { availableCash = funds.mcx; }
+  else if (stock.type === 'FOREX') { availableCash = funds.forex; }
+  else if (stock.type === 'CRYPTO') { availableCash = funds.crypto; }
+  else { availableCash = funds.stock; }
 
   const canBuy = mode === 'BUY' && (selectedBroker !== 'PAPER' || (totalValue <= availableCash)) && totalValue > 0;
   const canSell = mode === 'SELL' && holdingQty >= qtyNum && qtyNum > 0;
@@ -128,11 +147,11 @@ export const TradeModal: React.FC<TradeModalProps> = ({
             <button onClick={() => setMode('SELL')} className={`flex-1 py-2.5 rounded-md font-medium text-sm transition-all ${mode === 'SELL' ? 'bg-red-600 text-white shadow-md' : 'text-slate-400'}`}>Sell</button>
           </div>
           
-          {activeBrokers.length > 1 && (
+          {compatibleBrokers.length > 1 && (
             <div>
-               <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Broker</label>
+               <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Select Broker</label>
                <div className="grid grid-cols-3 gap-2">
-                  {activeBrokers.map(b => (
+                  {compatibleBrokers.map(b => (
                      <button key={b} onClick={() => setSelectedBroker(b)} className={`py-2 text-[10px] md:text-xs font-bold rounded-lg border transition-all truncate px-1 ${selectedBroker === b ? `${getBrokerColor(b)} text-white` : 'bg-slate-900 border-slate-700 text-slate-400'}`}>
                         {b}
                      </button>

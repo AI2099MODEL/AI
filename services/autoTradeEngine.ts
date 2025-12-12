@@ -77,13 +77,13 @@ export const runAutoTradeEngine = (
 
     // 2. MANAGE ENTRIES (Sliced Entry for Best 5)
     
-    // Determine how many slots available
+    // Determine how many slots available (Logic: Can trade if we have slots OR if we are slicing into an existing Best 5 pos)
     const slotsAvailable = MAX_POSITIONS - paperPortfolio.length;
 
-    if (slotsAvailable > 0 || paperPortfolio.length < MAX_POSITIONS) {
+    if (slotsAvailable >= 0) {
         
         // Filter recommendations for "Strong Buy" signals
-        // Sorted by Score (High to Low)
+        // Sorted by Score (High to Low) to get "Best 5" candidates
         const candidates = recommendations
             .filter(rec => {
                 const status = getMarketStatus(rec.type);
@@ -107,7 +107,7 @@ export const runAutoTradeEngine = (
 
             const existingPosition = paperPortfolio.find(p => p.symbol === rec.symbol);
             
-            // Calculate Target Trade Size
+            // Calculate Target Trade Size based on Capital
             const totalCapitalForTrading = currentFunds.stock + 
                 paperPortfolio.reduce((acc, p) => acc + (p.avgCost * p.quantity), 0); // Total Paper Account Value approx
             
@@ -119,6 +119,7 @@ export const runAutoTradeEngine = (
             const sliceAmount = allocationPerStock * SLICE_PERCENTAGE;
 
             // Scenario A: Adding to existing position (Slicing In)
+            // Only add if we haven't reached full allocation yet
             if (existingPosition) {
                 const currentInvested = existingPosition.avgCost * existingPosition.quantity;
                 if (currentInvested < allocationPerStock) {
