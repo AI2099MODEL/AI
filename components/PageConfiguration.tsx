@@ -210,27 +210,6 @@ export const PageConfiguration: React.FC<PageConfigurationProps> = ({ settings, 
                              </div>
                          )}
                     </div>
-                    
-                    {/* GROWW */}
-                     <div className={`p-4 rounded-xl border transition-all ${formData.activeBrokers.includes('GROWW') ? 'bg-surface border-emerald-500/50' : 'bg-surface/50 border-slate-800'}`}>
-                         <div className="flex justify-between items-center mb-2">
-                             <div className="flex items-center gap-2">
-                                 <div className="p-1.5 bg-emerald-500/20 rounded text-emerald-400"><Building2 size={16}/></div>
-                                 <h4 className="font-bold text-white text-sm">Groww</h4>
-                             </div>
-                             <button onClick={() => toggleBroker('GROWW')} className={`w-8 h-4 rounded-full relative transition-colors ${formData.activeBrokers.includes('GROWW') ? 'bg-green-500' : 'bg-slate-600'}`}>
-                                 <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${formData.activeBrokers.includes('GROWW') ? 'left-4.5' : 'left-0.5'}`}></div>
-                             </button>
-                         </div>
-                         {formData.activeBrokers.includes('GROWW') && (
-                             <div className="mt-4 animate-fade-in">
-                                 <div>
-                                    <label className="text-[10px] text-slate-400 block mb-1">API Key (Optional)</label>
-                                    <input type="password" placeholder="API Key" value={formData.growwApiKey || ''} onChange={(e) => setFormData({...formData, growwApiKey: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white outline-none focus:border-emerald-500"/>
-                                 </div>
-                             </div>
-                         )}
-                    </div>
                 </div>
             )}
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { StockRecommendation, MarketData, MarketSettings, AssetType } from '../types';
 import { StockCard } from './StockCard';
-import { RefreshCw, Globe, TrendingUp, DollarSign, Clock, Calendar, BarChart, Zap, Cpu } from 'lucide-react';
+import { RefreshCw, Globe, TrendingUp, DollarSign, Clock, Calendar, BarChart, Zap, Cpu, TrendingDown, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
 
 interface PageMarketProps {
   recommendations: StockRecommendation[];
@@ -71,6 +71,67 @@ export const PageMarket: React.FC<PageMarketProps> = ({
     );
   };
 
+  const renderCryptoTrendBoard = () => {
+      if (!isTypeAllowed('CRYPTO') || !enabledMarkets.crypto) return null;
+
+      return (
+          <div className="mb-8 bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden">
+               <div className="px-4 py-3 border-b border-slate-800 flex justify-between items-center bg-slate-800/30">
+                  <div className="flex items-center gap-2">
+                      <Cpu size={16} className="text-purple-400"/>
+                      <h3 className="text-sm font-bold text-white">Top 5 Crypto Trends</h3>
+                  </div>
+                  <span className="text-[10px] text-slate-500 bg-slate-900 px-2 py-0.5 rounded border border-slate-700">Live AI</span>
+               </div>
+               <div className="overflow-x-auto">
+                   <table className="w-full text-left text-xs">
+                       <thead>
+                           <tr className="text-slate-500 border-b border-slate-800/50">
+                               <th className="px-4 py-2">Coin</th>
+                               <th className="px-4 py-2 text-right">CMP ($)</th>
+                               <th className="px-4 py-2 text-right">Trend</th>
+                               <th className="px-4 py-2 text-right">Action</th>
+                           </tr>
+                       </thead>
+                       <tbody className="divide-y divide-slate-800/50">
+                           {isLoading ? (
+                               <tr><td colSpan={4} className="p-4 text-center text-slate-500">Scanning blockchain...</td></tr>
+                           ) : cryptoRecs.slice(0, 5).map(c => {
+                               const data = marketData[c.symbol];
+                               const price = data?.price || c.currentPrice;
+                               const change = data?.changePercent || 0;
+                               const isUp = change >= 0;
+                               const signal = c.reason.includes('Buy') ? 'BUY' : c.reason.includes('Sell') ? 'SELL' : 'HOLD';
+                               
+                               return (
+                                   <tr key={c.symbol} onClick={() => onTrade(c)} className="hover:bg-slate-800/40 cursor-pointer">
+                                       <td className="px-4 py-3 font-bold text-white">{c.symbol}</td>
+                                       <td className="px-4 py-3 text-right font-mono text-slate-300">${price.toLocaleString()}</td>
+                                       <td className="px-4 py-3 text-right">
+                                           <div className={`flex items-center justify-end gap-1 ${isUp ? 'text-green-400' : 'text-red-400'}`}>
+                                               {isUp ? <TrendingUp size={12}/> : <TrendingDown size={12}/>}
+                                               {Math.abs(change).toFixed(2)}%
+                                           </div>
+                                       </td>
+                                       <td className="px-4 py-3 text-right">
+                                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                               signal === 'BUY' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                                               signal === 'SELL' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                                               'bg-slate-700 text-slate-300 border-slate-600'
+                                           }`}>
+                                               {signal}
+                                           </span>
+                                       </td>
+                                   </tr>
+                               )
+                           })}
+                       </tbody>
+                   </table>
+               </div>
+          </div>
+      );
+  }
+
   return (
     <div className="p-4 pb-20 animate-fade-in">
       <div className="flex justify-between items-center mb-6">
@@ -84,6 +145,9 @@ export const PageMarket: React.FC<PageMarketProps> = ({
             <RefreshCw size={18} />
          </button>
       </div>
+      
+      {/* Crypto Trend Board - Special Section */}
+      {renderCryptoTrendBoard()}
 
       {isTypeAllowed('STOCK') && (
         <>
@@ -95,7 +159,8 @@ export const PageMarket: React.FC<PageMarketProps> = ({
         </>
       )}
 
-      {renderSection("Crypto Assets", cryptoRecs, <Cpu size={20}/>, "Digital Currency Signals", "text-purple-400", 'CRYPTO')}
+      {/* Crypto Cards Section (Full view) */}
+      {renderSection("All Crypto Assets", cryptoRecs, <Cpu size={20}/>, "Digital Currency Signals", "text-purple-400", 'CRYPTO')}
       {renderSection("MCX Commodities", mcxRecs, <Globe size={20}/>, "Futures: Gold, Silver, Crude", "text-yellow-400", 'MCX')}
       {renderSection("Forex Pairs", forexRecs, <DollarSign size={20}/>, "Currency derivatives", "text-teal-400", 'FOREX')}
       

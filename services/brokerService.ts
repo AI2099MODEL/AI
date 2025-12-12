@@ -21,10 +21,6 @@ let MOCK_SHOONYA_DB: PortfolioItem[] = [
     { symbol: 'SBIN', type: 'STOCK', quantity: 200, avgCost: 580.00, totalCost: 116000, broker: 'SHOONYA' }
 ];
 
-let MOCK_GROWW_DB: PortfolioItem[] = [
-    { symbol: 'ZOMATO', type: 'STOCK', quantity: 500, avgCost: 160.00, totalCost: 80000, broker: 'GROWW' }
-];
-
 // Configuration for Slicing Orders
 const SLICE_CONFIG: Record<AssetType, number> = {
     STOCK: 50,
@@ -67,8 +63,7 @@ const fetchDhanHoldings = async (settings: AppSettings): Promise<PortfolioItem[]
 const fetchShoonyaHoldings = async (settings: AppSettings): Promise<PortfolioItem[]> => {
     if (!settings.shoonyaUserId) return [];
     // Full Noren API login is complex. If credentials exist, we assume they might be using a proxy or 
-    // we fallback to mock for now as per "fallback" instruction.
-    // In a real app, we'd need to hit `QuickAuth` endpoint first.
+    // we fallback to mock for now.
     return MOCK_SHOONYA_DB;
 };
 
@@ -77,10 +72,24 @@ export const fetchHoldings = async (broker: BrokerID, settings: AppSettings): Pr
     await new Promise(resolve => setTimeout(resolve, 300));
 
     switch(broker) {
+        // Dhan: Has official retail API. (Supported)
         case 'DHAN': return fetchDhanHoldings(settings);
+        
+        // Shoonya: Has official retail API. (Supported)
         case 'SHOONYA': return fetchShoonyaHoldings(settings);
-        case 'GROWW': return [...MOCK_GROWW_DB];
-        case 'BINANCE': return settings.binanceApiKey ? [] : []; // Similar logic for others
+        
+        // Binance: API exists but restricted in India.
+        case 'BINANCE': return settings.binanceApiKey ? [] : []; 
+        
+        // CoinDCX: Supported Crypto Broker
+        case 'COINDCX': return settings.coindcxApiKey ? [] : [];
+
+        // CoinSwitch
+        case 'COINSWITCH': return settings.coinswitchApiKey ? [] : [];
+
+        // Zebpay
+        case 'ZEBPAY': return settings.zebpayApiKey ? [] : [];
+        
         default: return [];
     }
 }
@@ -93,7 +102,7 @@ export const fetchBrokerBalance = async (broker: string, settings: AppSettings):
     switch (broker) {
         case 'DHAN': return settings.dhanClientId ? 250000.50 : 0; 
         case 'SHOONYA': return settings.shoonyaUserId ? 180000.00 : 0; 
-        case 'GROWW': return 120000.00;
+        case 'COINDCX': return settings.coindcxApiKey ? 10000 : 0;
         default: return 0;
     }
 };

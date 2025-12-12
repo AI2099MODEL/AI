@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { PortfolioItem, MarketData, HoldingAnalysis } from '../types';
 import { PortfolioTable } from './PortfolioTable';

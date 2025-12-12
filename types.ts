@@ -39,7 +39,7 @@ export interface HoldingAnalysis {
   cagr: string;
 }
 
-export type BrokerID = 'PAPER' | 'DHAN' | 'SHOONYA' | 'GROWW' | 'BINANCE' | 'COINDCX' | 'COINSWITCH' | 'ZEBPAY';
+export type BrokerID = 'PAPER' | 'DHAN' | 'SHOONYA' | 'BINANCE' | 'COINDCX' | 'COINSWITCH' | 'ZEBPAY';
 
 export interface PortfolioItem {
   symbol: string;
@@ -132,7 +132,6 @@ export interface AppSettings {
   shoonyaPassword?: string; // Kept for legacy/sim
   shoonyaApiKey?: string;   // For real auth
   shoonyaVendorCode?: string; // For real auth
-  growwApiKey?: string; // Mock
   // Crypto Exchanges
   binanceApiKey?: string;
   binanceSecret?: string;

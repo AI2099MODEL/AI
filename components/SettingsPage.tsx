@@ -328,7 +328,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onSave, on
 
                 {/* === NOTIFICATIONS TAB === */}
                 {activeTab === 'NOTIFICATIONS' && (
-                    <div className="space-y-6 animate-slide-up">
+                    <div className="space-y-6 animate-fade-in">
                         <div className="bg-surface p-6 rounded-xl border border-slate-700 text-center">
                             <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <Send size={32} className="text-blue-400"/>

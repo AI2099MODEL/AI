@@ -31,7 +31,7 @@ export const fetchTopStockPicks = async (
   // 1. SELECT STOCKS (ALGORITHMIC)
   if (markets.stocks && stockUniverse.length > 0) {
       // Scan a subset of stocks to avoid rate limits
-      const candidates = shuffleArray([...stockUniverse]).slice(0, 40); 
+      const candidates = shuffleArray([...stockUniverse]).slice(0, 30); 
       
       const promises = candidates.map(async (sym) => {
           try {
@@ -103,27 +103,44 @@ export const fetchTopStockPicks = async (
       sortedResults.forEach(r => picks.push(r.rec));
   }
 
-  // 2. CRYPTO
+  // 2. CRYPTO - ALWAYS FETCH TOP 5 for "Market Page Trend Board"
+  // Even if crypto is disabled in settings, we fetch data to populate the trend board if requested, 
+  // but filtering happens at UI level. 
+  // Here we assume if called, we want data.
   if (markets.crypto) {
-      const cryptos = ['BTC', 'ETH', 'SOL'];
-      for (const c of cryptos) {
-          const data = await fetchRealStockData(c, dummySettings);
-          if (data) {
-             picks.push({
-                 symbol: c,
-                 name: getCompanyName(c),
-                 type: 'CRYPTO',
-                 sector: 'Digital',
-                 currentPrice: data.price,
-                 reason: "Crypto Momentum",
-                 riskLevel: 'High',
-                 targetPrice: data.price * 1.05,
-                 lotSize: c === 'BTC' ? 0.01 : 1,
-                 timeframe: 'INTRADAY',
-                 chartPattern: "Volatile"
-             });
-          }
-      }
+      const cryptos = ['BTC', 'ETH', 'SOL', 'XRP', 'BNB'];
+      
+      const cryptoPromises = cryptos.map(async (c) => {
+          try {
+            const data = await fetchRealStockData(c, dummySettings);
+            if (data) {
+                // Determine Recommendation based on Score
+                let recReason = "Hold";
+                if (data.technicals.score > 65) recReason = "Strong Buy";
+                else if (data.technicals.score > 55) recReason = "Buy";
+                else if (data.technicals.score < 35) recReason = "Strong Sell";
+                else if (data.technicals.score < 45) recReason = "Sell";
+
+                return {
+                    symbol: c,
+                    name: getCompanyName(c),
+                    type: 'CRYPTO',
+                    sector: 'Digital',
+                    currentPrice: data.price,
+                    reason: `${recReason} - Score: ${data.technicals.score.toFixed(0)}`,
+                    riskLevel: 'High',
+                    targetPrice: data.price * (recReason.includes('Buy') ? 1.05 : 0.95),
+                    lotSize: c === 'BTC' ? 0.01 : 1,
+                    timeframe: 'INTRADAY',
+                    chartPattern: data.technicals.activeSignals[0] || "Volatile"
+                } as StockRecommendation;
+            }
+          } catch (e) { return null; }
+          return null;
+      });
+
+      const cryptoResults = await Promise.all(cryptoPromises);
+      cryptoResults.forEach(r => { if(r) picks.push(r); });
   }
 
   // 3. MCX

@@ -25,7 +25,7 @@ const STORAGE_KEYS = {
   LAST_RUN: 'aitrade_last_run'
 };
 
-const STOCK_BROKERS = ['DHAN', 'SHOONYA', 'GROWW'];
+const STOCK_BROKERS = ['DHAN', 'SHOONYA'];
 const CRYPTO_BROKERS = ['BINANCE', 'COINDCX', 'COINSWITCH', 'ZEBPAY'];
 
 const SplashScreen = ({ visible }: { visible: boolean }) => {
@@ -58,7 +58,7 @@ export default function App() {
     const defaults = {
         initialFunds: { stock: 1000000, mcx: 500000, forex: 500000, crypto: 500000 },
         autoTradeConfig: { mode: 'PERCENTAGE', value: 5 },
-        activeBrokers: ['PAPER', 'DHAN', 'GROWW', 'SHOONYA', 'BINANCE', 'COINDCX', 'COINSWITCH', 'ZEBPAY'], 
+        activeBrokers: ['PAPER', 'DHAN', 'SHOONYA', 'BINANCE', 'COINDCX', 'COINSWITCH', 'ZEBPAY'], 
         enabledMarkets: { stocks: true, mcx: true, forex: true, crypto: true }, 
         telegramBotToken: '',
         telegramChatId: ''
@@ -406,11 +406,11 @@ export default function App() {
                 transactions={transactions}
             />
         )}
-        {/* Page 3: Stock Portfolio (Dhan, Shoonya, Groww) */}
+        {/* Page 3: Stock Portfolio (Dhan, Shoonya) */}
         {activePage === 3 && (
             <PageLivePNL 
                 title="My Stocks"
-                subtitle="Dhan, Shoonya & Groww Portfolio"
+                subtitle="Dhan & Shoonya Portfolio"
                 icon={Briefcase}
                 holdings={stockHoldings}
                 marketData={marketData}
