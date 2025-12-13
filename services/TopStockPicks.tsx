@@ -1,4 +1,3 @@
-// TopStockPicks.tsx
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchTopStockPicks } from "./stockPickerService";
@@ -15,14 +14,23 @@ export const TopStockPicks: React.FC<Props> = ({
   stockUniverse = [],
   markets
 }) => {
-  const { data, isLoading, isFetching, isError, refetch } = useQuery<StockRecommendation[]>({
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isError,
+    refetch
+  } = useQuery<StockRecommendation[]>({
     queryKey: ["topStockPicks", totalCapital, stockUniverse, markets],
     queryFn: () => fetchTopStockPicks(totalCapital, stockUniverse, markets),
     staleTime: 30_000,
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    // if you only want to fetch on button click, set enabled: false
+    enabled: true
   });
 
-  if (isLoading) {
+  // show while first load OR any refetch
+  if (isLoading || (isFetching && !data)) {
     return (
       <div className="flex flex-col items-center justify-center py-8">
         <div className="mb-2 animate-pulse text-sm text-gray-400">
@@ -54,7 +62,7 @@ export const TopStockPicks: React.FC<Props> = ({
 
   return (
     <div className="space-y-2">
-      {isFetching && (
+      {isFetching && data && (
         <div className="text-xs text-gray-400">Refreshing picks...</div>
       )}
 
