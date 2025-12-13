@@ -1,6 +1,4 @@
-// TopStockPicks.tsx
-import React from "react";
-import { useQuery } from "@tanstack/react-query";
+// stockPickerService.ts (keep .ts)
 import {
   StockRecommendation,
   MarketSettings,
@@ -12,8 +10,6 @@ import {
 import { getCompanyName, NSE_UNIVERSE } from "./stockListService";
 import { fetchMultipleSymbols } from "./marketDataService";
 
-// -------- helpers --------
-
 function shuffleArray<T>(array: T[]): T[] {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -23,9 +19,7 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
-// -------- core logic (previous fetchTopStockPicks + analyzeHoldings) --------
-
-const fetchTopStockPicks = async (
+export const fetchTopStockPicks = async (
   totalCapital: number,
   stockUniverse: string[] = [],
   markets: MarketSettings = { stocks: true, mcx: false, forex: false, crypto: false }
@@ -45,7 +39,7 @@ const fetchTopStockPicks = async (
   // 1. STOCKS
   if (markets.stocks) {
     const universe = stockUniverse.length > 0 ? stockUniverse : NSE_UNIVERSE.slice(0, 100);
-    const candidates = shuffleArray(universe).slice(0, 50); // speed
+    const candidates = shuffleArray(universe).slice(0, 50);
 
     const batchData = await fetchMultipleSymbols(candidates, dummySettings);
 
@@ -265,101 +259,4 @@ export const analyzeHoldings = async (
       cagr: "N/A"
     };
   });
-};
-
-// -------- React Query hook + component (with loading indicator) --------
-
-type TopStockPicksProps = {
-  totalCapital: number;
-  stockUniverse?: string[];
-  markets: MarketSettings;
-};
-
-const useTopStockPicks = ({
-  totalCapital,
-  stockUniverse = [],
-  markets
-}: TopStockPicksProps) => {
-  return useQuery<StockRecommendation[]>({
-    queryKey: ["topStockPicks", totalCapital, stockUniverse, markets],
-    queryFn: () => fetchTopStockPicks(totalCapital, stockUniverse, markets),
-    staleTime: 30_000,
-    refetchOnWindowFocus: false
-  });
-};
-
-export const TopStockPicks: React.FC<TopStockPicksProps> = ({
-  totalCapital,
-  stockUniverse = [],
-  markets
-}) => {
-  const { data, isLoading, isFetching, isError, error, refetch } = useTopStockPicks({
-    totalCapital,
-    stockUniverse,
-    markets
-  });
-
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-8">
-        <div className="mb-2 animate-pulse text-sm text-gray-400">
-          Searching best stocks...
-        </div>
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="py-4 text-sm text-red-500">
-        Failed to fetch recommendations.{" "}
-        <button onClick={() => refetch()} className="underline">
-          Try again
-        </button>
-      </div>
-    );
-  }
-
-  if (!data || data.length === 0) {
-    return (
-      <div className="py-4 text-sm text-gray-400">
-        No strong setups found with current filters. Try relaxing criteria or changing markets.
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      {isFetching && (
-        <div className="text-xs text-gray-400">Refreshing picks...</div>
-      )}
-
-      {data.map(pick => (
-        <div
-          key={pick.symbol}
-          className="rounded-md border border-gray-700 bg-gray-900 p-3 text-sm"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="font-semibold">
-                {pick.symbol} · {pick.name}
-              </div>
-              <div className="text-xs text-gray-400">
-                {pick.timeframe} · {pick.chartPattern}
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-sm">
-                ₹{pick.currentPrice.toFixed(2)} → ₹{pick.targetPrice.toFixed(2)}
-              </div>
-              <div className="text-xs text-gray-400">
-                {pick.riskLevel} · {pick.reason}
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
 };
