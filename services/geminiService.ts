@@ -1,277 +1,365 @@
-import { StockRecommendation, MarketSettings, PortfolioItem, HoldingAnalysis, MarketData, AppSettings, AssetType } from "../types";
-import { getCompanyName, getUniverseByType, NSE_UNIVERSE } from "./stockListService";
-import { fetchRealStockData, fetchMultipleSymbols } from "./marketDataService";
+// TopStockPicks.tsx
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  StockRecommendation,
+  MarketSettings,
+  PortfolioItem,
+  HoldingAnalysis,
+  MarketData,
+  AppSettings
+} from "../types";
+import { getCompanyName, NSE_UNIVERSE } from "./stockListService";
+import { fetchMultipleSymbols } from "./marketDataService";
 
-// ✅ Shuffle helper (unchanged)
+// -------- helpers --------
+
 function shuffleArray<T>(array: T[]): T[] {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
 }
 
-// 🚀 PERFECTLY COMPATIBLE fetchTopStockPicks - Enhanced for new systems
-export const fetchTopStockPicks = async (
-    totalCapital: number, 
-    stockUniverse: string[] = [], 
-    markets: MarketSettings = { stocks: true, mcx: false, forex: false, crypto: false }
+// -------- core logic (previous fetchTopStockPicks + analyzeHoldings) --------
+
+const fetchTopStockPicks = async (
+  totalCapital: number,
+  stockUniverse: string[] = [],
+  markets: MarketSettings = { stocks: true, mcx: false, forex: false, crypto: false }
 ): Promise<StockRecommendation[]> => {
-  
-    const picks: StockRecommendation[] = [];
-    const dummySettings: AppSettings = {
-        initialFunds: { stock: 0, mcx: 0, forex: 0, crypto: 0 },
-        autoTradeConfig: { mode: 'FIXED', value: 0 },
-        activeBrokers: [],
-        enabledMarkets: markets,
-        telegramBotToken: '',
-        telegramChatId: ''
-    };
+  const picks: StockRecommendation[] = [];
+  const symbolScores: Record<string, number> = {};
 
-    // 1. STOCKS - Use new universe system [memory:16]
-    if (markets.stocks) {
-        // Auto-use Nifty 100 if no universe provided
-        const universe = stockUniverse.length > 0 ? stockUniverse : NSE_UNIVERSE.slice(0, 100);
-        
-        // Scan 50 random candidates for best picks
-        const candidates = shuffleArray([...universe]).slice(0, 50);
-        
-        // BATCH FETCH for efficiency (new feature!)
-        const batchData = await fetchMultipleSymbols(candidates, dummySettings);
-        
-        const stockCandidates = Object.entries(batchData)
-            .map(([sym, data]) => ({ sym, data }))
-            .filter(({ data }) => data && data.technicals?.score && data.technicals.score >= 45);
+  const dummySettings: AppSettings = {
+    initialFunds: { stock: 0, mcx: 0, forex: 0, crypto: 0 },
+    autoTradeConfig: { mode: "FIXED", value: 0 },
+    activeBrokers: [],
+    enabledMarkets: markets,
+    telegramBotToken: "",
+    telegramChatId: ""
+  };
 
-        stockCandidates.forEach(({ sym, data }) => {
-            const { technicals, price } = data;
-            
-            // ✅ HIGH-PROFIT FILTERS (Updated for new technicals)
-            let type: 'INTRADAY' | 'BTST' | 'WEEKLY' | 'MONTHLY' | null = null;
-            let reason = "";
-            let pattern = "Trend Following";
+  // 1. STOCKS
+  if (markets.stocks) {
+    const universe = stockUniverse.length > 0 ? stockUniverse : NSE_UNIVERSE.slice(0, 100);
+    const candidates = shuffleArray(universe).slice(0, 50); // speed
 
-            // Priority signals (matches new high-profit algo)
-            if (technicals.signalStrength === '🚀 STRONG BUY') {
-                type = 'BTST';
-                reason = `🚀 STRONG BUY (${technicals.profitPotential?.toFixed(1)}% potential)`;
-                pattern = "Elite Momentum";
-            } 
-            else if (technicals.supertrend?.direction === 1 && technicals.adx > 25) {
-                type = 'INTRADAY';
-                reason = `SuperTrend Bull (ADX ${technicals.adx.toFixed(0)})`;
-                pattern = "Trend Breakout";
-            }
-            else if (technicals.rsi < 35 && technicals.ema.ema9 > technicals.ema.ema21) {
-                type = 'MONTHLY';
-                reason = `Oversold Reversal (RSI ${technicals.rsi.toFixed(0)})`;
-                pattern = "Dip Buy";
-            }
-            else if (technicals.macd.histogram > 0 && technicals.macd.macd > technicals.macd.signal) {
-                type = 'BTST';
-                reason = `MACD Bullish (${technicals.activeSignals[0] || ''})`;
-                pattern = "Momentum Swing";
-            }
-            else if (technicals.bollinger.percentB < 0.2) {
-                type = 'WEEKLY';
-                reason = `BB Support (${technicals.bollinger.percentB.toFixed(1)})`;
-                pattern = "Volatility Squeeze";
-            }
-            else if (technicals.score > 75) {
-                type = 'WEEKLY';
-                reason = `Strong Score ${technicals.score.toFixed(0)}`;
-                pattern = "Technical Strength";
-            }
+    const batchData = await fetchMultipleSymbols(candidates, dummySettings);
 
-            if (type) {
-                // ✅ DYNAMIC TARGETS (ATR + Profit Filter)
-                const atr = technicals.atr || (price * 0.02);
-                let targetMultiplier = type === 'INTRADAY' ? 1.5 : 2.5;
-                const target = price + (atr * targetMultiplier);
-                const profitPct = ((target - price) / price) * 100;
-                
-                // STRICT 3%+ PROFIT FILTER (No small profits!)
-                if (profitPct >= 3.0) {
-                    picks.push({
-                        symbol: sym,
-                        name: getCompanyName(sym),
-                        type: 'STOCK',
-                        sector: 'Equity',
-                        currentPrice: parseFloat(price.toFixed(2)),
-                        reason,
-                        riskLevel: type === 'INTRADAY' ? 'High' : 'Medium',
-                        targetPrice: parseFloat(target.toFixed(2)),
-                        lotSize: 1,
-                        timeframe: type,
-                        chartPattern: pattern
-                    });
-                }
-            }
-        });
+    const stockCandidates = Object.entries(batchData)
+      .map(([sym, data]) => ({ sym, data }))
+      .filter(({ data }) => data && data.technicals?.score && data.technicals.score >= 35);
 
-        // Sort stocks by score (highest first)
-        picks.sort((a, b) => {
-            const dataA = batchData[a.symbol];
-            const dataB = batchData[b.symbol];
-            return (dataB?.technicals.score || 0) - (dataA?.technicals.score || 0);
-        });
-    }
+    stockCandidates.forEach(({ sym, data }) => {
+      const { technicals, price } = data!;
+      symbolScores[sym] = technicals.score ?? 0;
 
-    // 2. CRYPTO - Top 6 with profit filter
-    if (markets.crypto) {
-        const cryptoUniverse = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'BNB/USDT', 'XRP/USDT', 'ADA/USDT'];
-        const cryptoData = await fetchMultipleSymbols(cryptoUniverse, dummySettings);
-        
-        Object.entries(cryptoData).forEach(([sym, data]) => {
-            if (!data || !data.technicals) return;
-            
-            const { technicals, price } = data;
-            if (technicals.score < 55) return; // Filter weak cryptos
-            
-            const atr = technicals.atr || (price * 0.05); // Higher crypto vol
-            const direction = technicals.signalStrength?.includes('BUY') ? 1 : -1;
-            const target = price + (atr * 2 * direction);
-            const profitPct = Math.abs((target - price) / price) * 100;
-            
-            if (profitPct >= 4.0) { // Higher crypto threshold
-                picks.push({
-                    symbol: sym,
-                    name: getCompanyName(sym),
-                    type: 'CRYPTO',
-                    sector: 'Digital Asset',
-                    currentPrice: parseFloat(price.toFixed(2)),
-                    reason: `${technicals.signalStrength} - ${technicals.profitPotential?.toFixed(1)}%`,
-                    riskLevel: 'Very High',
-                    targetPrice: parseFloat(target.toFixed(2)),
-                    lotSize: sym === 'BTC/USDT' ? 0.01 : 1,
-                    timeframe: 'INTRADAY',
-                    chartPattern: technicals.activeSignals?.[0] || "High Volatility"
-                });
-            }
-        });
-    }
+      let type: "INTRADAY" | "BTST" | "WEEKLY" | "MONTHLY" | null = null;
+      let reason = "";
+      let pattern = "Trend Following";
 
-    // 3. MCX Commodities
-    if (markets.mcx) {
-        const mcxUniverse = ['GOLD', 'SILVER', 'CRUDEOIL', 'NATURALGAS', 'COPPER'];
-        const mcxData = await fetchMultipleSymbols(mcxUniverse, dummySettings);
-        
-        Object.entries(mcxData).forEach(([sym, data]) => {
-            if (!data || !data.technicals?.score || data.technicals.score < 60) return;
-            
-            const { technicals, price } = data;
-            const atr = technicals.atr || (price * 0.015);
-            const target = price + (atr * 2.5);
-            const profitPct = ((target - price) / price) * 100;
-            
-            if (profitPct >= 2.5) {
-                picks.push({
-                    symbol: sym,
-                    name: getCompanyName(sym),
-                    type: 'MCX',
-                    sector: 'Commodity',
-                    currentPrice: parseFloat(price.toFixed(2)),
-                    reason: `${technicals.signalStrength} Trend`,
-                    riskLevel: 'Medium',
-                    targetPrice: parseFloat(target.toFixed(2)),
-                    lotSize: 1,
-                    timeframe: 'WEEKLY',
-                    chartPattern: technicals.activeSignals?.[0] || "Commodity Trend"
-                });
-            }
-        });
-    }
+      if (technicals.signalStrength === "🚀 STRONG BUY") {
+        type = "BTST";
+        reason = `🚀 STRONG BUY (${technicals.profitPotential?.toFixed(1)}% potential)`;
+        pattern = "Elite Momentum";
+      } else if (technicals.supertrend?.direction === 1 && technicals.adx > 18) {
+        type = "INTRADAY";
+        reason = `SuperTrend Bull (ADX ${technicals.adx.toFixed(0)})`;
+        pattern = "Trend Breakout";
+      } else if (technicals.rsi < 45 && technicals.ema.ema9 > technicals.ema.ema21) {
+        type = "MONTHLY";
+        reason = `Oversold Reversal (RSI ${technicals.rsi.toFixed(0)})`;
+        pattern = "Dip Buy";
+      } else if (technicals.macd.histogram > 0 && technicals.macd.macd > technicals.macd.signal) {
+        type = "BTST";
+        reason = `MACD Bullish (${technicals.activeSignals?.[0] || ""})`;
+        pattern = "Momentum Swing";
+      } else if (technicals.bollinger.percentB < 0.35) {
+        type = "WEEKLY";
+        reason = `BB Support (${technicals.bollinger.percentB.toFixed(1)})`;
+        pattern = "Volatility Squeeze";
+      } else if (technicals.score > 70) {
+        type = "WEEKLY";
+        reason = `Strong Score ${technicals.score.toFixed(0)}`;
+        pattern = "Technical Strength";
+      }
 
-    // 4. FOREX (Always add top pairs)
-    if (markets.forex) {
-        const forexUniverse = ['USDINR', 'EURINR', 'GBPINR'];
-        const forexData = await fetchMultipleSymbols(forexUniverse, dummySettings);
-        
-        Object.entries(forexData).forEach(([sym, data]) => {
-            if (!data) return;
-            
-            const { technicals, price } = data;
-            const atr = technicals.atr || (price * 0.003);
-            const target = price + (atr * 3); // Forex pip targets
-            
-            picks.push({
-                symbol: sym,
-                name: getCompanyName(sym),
-                type: 'FOREX',
-                sector: 'Currency',
-                currentPrice: parseFloat(price.toFixed(4)),
-                reason: `Score ${technicals.score?.toFixed(0)} - ${technicals.signalStrength}`,
-                riskLevel: 'High',
-                targetPrice: parseFloat(target.toFixed(4)),
-                lotSize: 1000,
-                timeframe: 'INTRADAY',
-                chartPattern: "Pip Momentum"
-            });
-        });
-    }
+      if (type) {
+        const atr = technicals.atr || price * 0.02;
+        const targetMultiplier = type === "INTRADAY" ? 1.5 : 2.5;
+        const target = price + atr * targetMultiplier;
+        const profitPct = ((target - price) / price) * 100;
 
-    // ✅ Final sort by profit potential + technical score
-    return picks.sort((a, b) => {
-        const dataA = picks.find(p => p.symbol === a.symbol);
-        const dataB = picks.find(p => p.symbol === b.symbol);
-        const scoreA = dataA ? (batchData[a.symbol]?.technicals.score || 0) : 0;
-        const scoreB = dataB ? (batchData[b.symbol]?.technicals.score || 0) : 0;
-        return scoreB - scoreA;
+        if (profitPct >= 2.0) {
+          picks.push({
+            symbol: sym,
+            name: getCompanyName(sym),
+            type: "STOCK",
+            sector: "Equity",
+            currentPrice: parseFloat(price.toFixed(2)),
+            reason,
+            riskLevel: type === "INTRADAY" ? "High" : "Medium",
+            targetPrice: parseFloat(target.toFixed(2)),
+            lotSize: 1,
+            timeframe: type,
+            chartPattern: pattern
+          });
+        }
+      }
     });
+  }
+
+  // 2. CRYPTO
+  if (markets.crypto) {
+    const cryptoUniverse = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT", "ADA/USDT"];
+    const cryptoData = await fetchMultipleSymbols(cryptoUniverse, dummySettings);
+
+    Object.entries(cryptoData).forEach(([sym, data]) => {
+      if (!data || !data.technicals) return;
+      const { technicals, price } = data;
+      if (technicals.score < 55) return;
+
+      symbolScores[sym] = technicals.score ?? 0;
+
+      const atr = technicals.atr || price * 0.05;
+      const direction = technicals.signalStrength?.includes("BUY") ? 1 : -1;
+      const target = price + atr * 2 * direction;
+      const profitPct = Math.abs((target - price) / price) * 100;
+
+      if (profitPct >= 4.0) {
+        picks.push({
+          symbol: sym,
+          name: getCompanyName(sym),
+          type: "CRYPTO",
+          sector: "Digital Asset",
+          currentPrice: parseFloat(price.toFixed(2)),
+          reason: `${technicals.signalStrength} - ${technicals.profitPotential?.toFixed(1)}%`,
+          riskLevel: "Very High",
+          targetPrice: parseFloat(target.toFixed(2)),
+          lotSize: sym === "BTC/USDT" ? 0.01 : 1,
+          timeframe: "INTRADAY",
+          chartPattern: technicals.activeSignals?.[0] || "High Volatility"
+        });
+      }
+    });
+  }
+
+  // 3. MCX
+  if (markets.mcx) {
+    const mcxUniverse = ["GOLD", "SILVER", "CRUDEOIL", "NATURALGAS", "COPPER"];
+    const mcxData = await fetchMultipleSymbols(mcxUniverse, dummySettings);
+
+    Object.entries(mcxData).forEach(([sym, data]) => {
+      if (!data || !data.technicals?.score || data.technicals.score < 60) return;
+      const { technicals, price } = data;
+
+      symbolScores[sym] = technicals.score ?? 0;
+
+      const atr = technicals.atr || price * 0.015;
+      const target = price + atr * 2.5;
+      const profitPct = ((target - price) / price) * 100;
+
+      if (profitPct >= 2.5) {
+        picks.push({
+          symbol: sym,
+          name: getCompanyName(sym),
+          type: "MCX",
+          sector: "Commodity",
+          currentPrice: parseFloat(price.toFixed(2)),
+          reason: `${technicals.signalStrength} Trend`,
+          riskLevel: "Medium",
+          targetPrice: parseFloat(target.toFixed(2)),
+          lotSize: 1,
+          timeframe: "WEEKLY",
+          chartPattern: technicals.activeSignals?.[0] || "Commodity Trend"
+        });
+      }
+    });
+  }
+
+  // 4. FOREX
+  if (markets.forex) {
+    const forexUniverse = ["USDINR", "EURINR", "GBPINR"];
+    const forexData = await fetchMultipleSymbols(forexUniverse, dummySettings);
+
+    Object.entries(forexData).forEach(([sym, data]) => {
+      if (!data || !data.technicals) return;
+      const { technicals, price } = data;
+
+      symbolScores[sym] = technicals.score ?? 0;
+
+      const atr = technicals.atr || price * 0.003;
+      const target = price + atr * 3;
+
+      picks.push({
+        symbol: sym,
+        name: getCompanyName(sym),
+        type: "FOREX",
+        sector: "Currency",
+        currentPrice: parseFloat(price.toFixed(4)),
+        reason: `Score ${technicals.score?.toFixed(0)} - ${technicals.signalStrength}`,
+        riskLevel: "High",
+        targetPrice: parseFloat(target.toFixed(4)),
+        lotSize: 1000,
+        timeframe: "INTRADAY",
+        chartPattern: "Pip Momentum"
+      });
+    });
+  }
+
+  return picks.sort(
+    (a, b) => (symbolScores[b.symbol] || 0) - (symbolScores[a.symbol] || 0)
+  );
 };
 
-// ✅ COMPATIBLE analyzeHoldings - Enhanced
 export const analyzeHoldings = async (
-    holdings: PortfolioItem[], 
-    marketData: MarketData
+  holdings: PortfolioItem[],
+  marketData: MarketData
 ): Promise<HoldingAnalysis[]> => {
-    return holdings.map(h => {
-        const data = marketData[h.symbol];
-        if (!data || !data.technicals) {
-            return {
-                symbol: h.symbol,
-                action: 'HOLD',
-                reason: 'No live data',
-                targetPrice: h.avgCost || 0,
-                dividendYield: '0.00%',
-                cagr: 'N/A'
-            };
-        }
+  return holdings.map(h => {
+    const data = marketData[h.symbol];
+    if (!data || !data.technicals) {
+      return {
+        symbol: h.symbol,
+        action: "HOLD",
+        reason: "No live data",
+        targetPrice: h.avgCost || 0,
+        dividendYield: "0.00%",
+        cagr: "N/A"
+      };
+    }
 
-        const { technicals, price } = data;
-        const atr = technicals.atr || (price * 0.02);
-        
-        let action: 'BUY' | 'SELL' | 'HOLD' = 'HOLD';
-        let reason = technicals.signalStrength || 'Neutral';
+    const { technicals, price } = data;
+    const atr = technicals.atr || price * 0.02;
 
-        // Enhanced logic using new signals
-        if (technicals.signalStrength?.includes('STRONG BUY') || technicals.signalStrength === '✅ BUY') {
-            action = 'BUY';
-            reason = `Add: ${technicals.activeSignals?.[0] || reason}`;
-        } 
-        else if (technicals.signalStrength?.includes('SELL') || technicals.rsi > 75) {
-            action = 'SELL';
-            reason = `Exit: ${technicals.activeSignals?.[0] || reason}`;
-        }
-        else if (price > h.avgCost * 1.10) { // 10% profit
-            action = 'SELL';
-            reason = 'Take Profits (10%+ gain)';
-        }
+    let action: "BUY" | "SELL" | "HOLD" = "HOLD";
+    let reason = technicals.signalStrength || "Neutral";
 
-        const target = action === 'BUY' 
-            ? price + (atr * 2) 
-            : action === 'SELL' 
-            ? price - (atr * 1.5) 
-            : h.avgCost;
+    if (technicals.signalStrength?.includes("STRONG BUY") || technicals.signalStrength === "✅ BUY") {
+      action = "BUY";
+      reason = `Add: ${technicals.activeSignals?.[0] || reason}`;
+    } else if (technicals.signalStrength?.includes("SELL") || technicals.rsi > 75) {
+      action = "SELL";
+      reason = `Exit: ${technicals.activeSignals?.[0] || reason}`;
+    } else if (price > (h.avgCost || 0) * 1.1) {
+      action = "SELL";
+      reason = "Take Profits (10%+ gain)";
+    }
 
-        return {
-            symbol: h.symbol,
-            action,
-            reason,
-            targetPrice: parseFloat(target.toFixed(2)),
-            dividendYield: '0.00%',
-            cagr: 'N/A'
-        };
-    });
+    const target =
+      action === "BUY"
+        ? price + atr * 2
+        : action === "SELL"
+        ? price - atr * 1.5
+        : h.avgCost;
+
+    return {
+      symbol: h.symbol,
+      action,
+      reason,
+      targetPrice: parseFloat(target!.toFixed(2)),
+      dividendYield: "0.00%",
+      cagr: "N/A"
+    };
+  });
+};
+
+// -------- React Query hook + component (with loading indicator) --------
+
+type TopStockPicksProps = {
+  totalCapital: number;
+  stockUniverse?: string[];
+  markets: MarketSettings;
+};
+
+const useTopStockPicks = ({
+  totalCapital,
+  stockUniverse = [],
+  markets
+}: TopStockPicksProps) => {
+  return useQuery<StockRecommendation[]>({
+    queryKey: ["topStockPicks", totalCapital, stockUniverse, markets],
+    queryFn: () => fetchTopStockPicks(totalCapital, stockUniverse, markets),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false
+  });
+};
+
+export const TopStockPicks: React.FC<TopStockPicksProps> = ({
+  totalCapital,
+  stockUniverse = [],
+  markets
+}) => {
+  const { data, isLoading, isFetching, isError, error, refetch } = useTopStockPicks({
+    totalCapital,
+    stockUniverse,
+    markets
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8">
+        <div className="mb-2 animate-pulse text-sm text-gray-400">
+          Searching best stocks...
+        </div>
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="py-4 text-sm text-red-500">
+        Failed to fetch recommendations.{" "}
+        <button onClick={() => refetch()} className="underline">
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="py-4 text-sm text-gray-400">
+        No strong setups found with current filters. Try relaxing criteria or changing markets.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {isFetching && (
+        <div className="text-xs text-gray-400">Refreshing picks...</div>
+      )}
+
+      {data.map(pick => (
+        <div
+          key={pick.symbol}
+          className="rounded-md border border-gray-700 bg-gray-900 p-3 text-sm"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-semibold">
+                {pick.symbol} · {pick.name}
+              </div>
+              <div className="text-xs text-gray-400">
+                {pick.timeframe} · {pick.chartPattern}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-sm">
+                ₹{pick.currentPrice.toFixed(2)} → ₹{pick.targetPrice.toFixed(2)}
+              </div>
+              <div className="text-xs text-gray-400">
+                {pick.riskLevel} · {pick.reason}
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 };
