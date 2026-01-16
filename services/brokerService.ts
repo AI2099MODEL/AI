@@ -1,4 +1,3 @@
-
 import { AppSettings, PortfolioItem, AssetType, BrokerID } from "../types";
 
 const fetchWithProxy = async (url: string, options: any) => {

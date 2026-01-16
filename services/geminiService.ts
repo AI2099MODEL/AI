@@ -12,10 +12,10 @@ export const fetchTopStockPicks = async (
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
-      contents: `Find the current top 5 high-momentum Indian stock recommendations from 'https://airobots.streamlit.app/'. 
-      If reachable, use the 'Trading Robot' picks. Otherwise, find the latest reliable momentum stock picks for the NSE/BSE market.
-      For each stock, provide: symbol (NSE format like RELIANCE.NS), name, expected target, and a short 1-sentence reason. 
-      Return the data as a clean JSON array.`,
+      contents: `Search 'https://airobots.streamlit.app/' and find the current top 5 momentum Indian stock picks listed under their 'Trading Robot' or recommendations section. 
+      Identify high-probability setups with target prices. 
+      For each stock, provide: symbol (NSE format like RELIANCE.NS), name, targetPrice, and a short 1-sentence logic/reason. 
+      Format the output as a valid JSON array of objects.`,
       config: {
         tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
@@ -46,10 +46,10 @@ export const fetchTopStockPicks = async (
       ...p,
       symbol: p.symbol.includes('.') ? p.symbol : `${p.symbol}.NS`,
       type: 'STOCK',
-      sector: 'AI Momentum Pick',
+      sector: 'Momentum AI Robot Pick',
       currentPrice: 0,
       lotSize: 1,
-      chartPattern: 'Momentum Breakout',
+      chartPattern: 'Breakout Pattern',
       isTopPick: true,
       sourceUrl
     }));

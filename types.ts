@@ -41,7 +41,7 @@ export interface HoldingAnalysis {
   cagr: string;
 }
 
-export type BrokerID = 'PAPER' | 'DHAN' | 'SHOONYA';
+export type BrokerID = 'PAPER' | 'DHAN' | 'SHOONYA' | 'BINANCE' | 'COINDCX' | 'COINSWITCH';
 
 export interface PortfolioItem {
   symbol: string;
@@ -105,9 +105,9 @@ export interface MarketData {
 
 export interface MarketSettings {
   stocks: boolean;
-  mcx: boolean;
-  forex: boolean;
-  crypto: boolean;
+  mcx?: boolean;
+  forex?: boolean;
+  crypto?: boolean;
 }
 
 export interface AutoTradeConfig {
@@ -128,6 +128,11 @@ export interface AppSettings {
   shoonyaPassword?: string;
   shoonyaApiKey?: string;
   shoonyaVendorCode?: string;
+  binanceApiKey?: string;
+  binanceSecret?: string;
+  coindcxApiKey?: string;
+  coindcxSecret?: string;
+  coinswitchApiKey?: string;
 }
 
 export interface PortfolioHistoryPoint {

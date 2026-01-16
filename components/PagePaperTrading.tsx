@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { PortfolioItem, MarketData, Funds, HoldingAnalysis, Transaction } from '../types';
 import { PortfolioTable } from './PortfolioTable';
 import { ActivityFeed } from './ActivityFeed';
-import { Wallet, PieChart, Sparkles, RefreshCw, Power, BarChart2, TrendingUp, Coins, CheckCircle2 } from 'lucide-react';
+import { Wallet, PieChart, Sparkles, RefreshCw, Power, BarChart2, TrendingUp, Coins } from 'lucide-react';
 
 interface PagePaperTradingProps {
   holdings: PortfolioItem[];

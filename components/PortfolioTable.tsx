@@ -30,6 +30,7 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({
   }
 
   const getAssetIcon = (type: AssetType) => {
+      // Fix: Now comparable as AssetType includes these values
       switch(type) {
           case 'MCX': return <Globe size={14} className="text-yellow-400" />;
           case 'FOREX': return <DollarSign size={14} className="text-green-400" />;

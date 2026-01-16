@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { StockRecommendation, MarketData, MarketSettings, AssetType } from '../types';
 import { StockCard } from './StockCard';
@@ -22,6 +23,7 @@ export const PageRecommendations: React.FC<PageRecommendationsProps> = ({
 }) => {
   
   const renderSection = (title: string, type: AssetType, icon: React.ReactNode, description: string) => {
+    // Fix: Ensure we handle lowercasing correctly and types match MarketSettings keys
     const settingsKey = type === 'STOCK' ? 'stocks' : type.toLowerCase() as keyof MarketSettings;
     if (!enabledMarkets[settingsKey]) return null;
 
@@ -63,6 +65,7 @@ export const PageRecommendations: React.FC<PageRecommendationsProps> = ({
          </button>
       </div>
 
+      {/* Fix: Expanded AssetType used to allow rendering sections for commodities and forex */}
       {renderSection("Indian Stocks", "STOCK", <TrendingUp size={20}/>, "NSE/BSE Equity Recommendations")}
       {renderSection("Commodities", "MCX", <Globe size={20}/>, "Gold, Silver, Crude Oil")}
       {renderSection("Forex", "FOREX", <DollarSign size={20}/>, "Currency Pairs")}

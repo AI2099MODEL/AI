@@ -1,4 +1,3 @@
-
 import { PortfolioItem, Funds } from "../types";
 
 export const generatePNLReport = (

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { fetchTopStockPicks, analyzeHoldings } from './services/geminiService';
 import { checkAndRefreshStockList } from './services/stockListService';
@@ -8,23 +7,20 @@ import { AuthOverlay } from './components/AuthOverlay';
 import { TradeModal } from './components/TradeModal';
 import { fetchBrokerBalance, fetchHoldings, placeOrder } from './services/brokerService';
 import { runAutoTradeEngine } from './services/autoTradeEngine';
-import { BarChart3, AlertCircle, Briefcase, Download } from 'lucide-react';
+import { BarChart3, Briefcase } from 'lucide-react';
 import { BottomNav } from './components/BottomNav';
 import { PageMarket } from './components/PageMarket';
 import { PagePaperTrading } from './components/PagePaperTrading';
 import { PageLivePNL } from './components/PageLivePNL';
 import { PageConfiguration } from './components/PageConfiguration';
-import { AdBanner } from './components/AdBanner'; 
 
 const GLOBAL_STORAGE = { USER: 'aitrade_current_user_v2' };
-// Fix: Correctly initialize DEFAULT_FUNDS with all required asset types
-const DEFAULT_FUNDS: Funds = { stock: 1000000, mcx: 500000, forex: 500000, crypto: 500000 };
-// Fix: Correctly initialize DEFAULT_SETTINGS with all required markets
+const DEFAULT_FUNDS: Funds = { stock: 1000000 };
 const DEFAULT_SETTINGS: AppSettings = {
     initialFunds: DEFAULT_FUNDS,
     autoTradeConfig: { mode: 'PERCENTAGE', value: 5 },
     activeBrokers: ['PAPER', 'DHAN', 'SHOONYA'], 
-    enabledMarkets: { stocks: true, mcx: true, forex: true, crypto: true }, 
+    enabledMarkets: { stocks: true }, 
     telegramBotToken: '',
     telegramChatId: ''
 };
@@ -62,7 +58,6 @@ export default function App() {
   const [activeBots, setActiveBots] = useState<{ [key: string]: boolean }>({ 'PAPER': true });
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
   const [selectedStock, setSelectedStock] = useState<StockRecommendation | null>(null);
-  const [tradeModalBroker, setTradeModalBroker] = useState<string | undefined>(undefined);
   const [niftyList, setNiftyList] = useState<string[]>([]);
   
   const refreshIntervalRef = useRef<any>(null);
