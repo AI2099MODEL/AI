@@ -14,10 +14,9 @@
     <title>AI-Trade Pro</title>
     
     <!-- Google AdSense -->
-    <!-- REPLACE 'ca-pub-YOUR_ID_HERE' WITH YOUR ACTUAL PUBLISHER ID -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ID_HERE" crossorigin="anonymous"></script>
 
-    <!-- Polyfill for process.env to prevent blank screen crashes on Vercel/Vite -->
+    <!-- Polyfill for process.env -->
     <script>
       window.process = window.process || { env: {} };
     </script>
@@ -57,75 +56,43 @@
     <style>
       html, body, #root {
         height: 100%;
-        overflow: hidden; /* Prevent body scroll */
-        /* Deep Radial Gradient Background */
+        overflow: hidden;
         background: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 60%, #020617 100%);
         color: #f8fafc;
         -webkit-tap-highlight-color: transparent;
-        user-select: none; /* Disable text selection for app feel */
+        user-select: none;
         -webkit-user-select: none;
       }
-      
-      /* Custom scrollbar for internal containers */
-      .custom-scrollbar::-webkit-scrollbar {
-        width: 4px;
-        height: 4px;
-      }
-      .custom-scrollbar::-webkit-scrollbar-track {
-        background: transparent; 
-      }
-      .custom-scrollbar::-webkit-scrollbar-thumb {
-        background: #475569; 
-        border-radius: 4px;
-      }
-      
-      /* Mobile Safe Area */
-      .safe-top {
-        padding-top: env(safe-area-inset-top);
-      }
-      .pb-safe {
-        padding-bottom: env(safe-area-inset-bottom);
-      }
-
-      /* Utilities */
-      .no-scrollbar::-webkit-scrollbar {
-        display: none;
-      }
-      .no-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
+      .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+      .safe-top { padding-top: env(safe-area-inset-top); }
+      .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
-  <script type="importmap">
+    <script type="importmap">
 {
   "imports": {
-    "lucide-react": "https://esm.sh/lucide-react@0.460.0",
-    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-    "react-dom": "https://esm.sh/react-dom@18.2.0",
     "react": "https://esm.sh/react@18.2.0",
+    "react-dom": "https://esm.sh/react-dom@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "lucide-react": "https://esm.sh/lucide-react@0.460.0?external=react,react-dom",
     "@google/genai": "https://esm.sh/@google/genai",
-    "recharts": "https://esm.sh/recharts@2.12.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.1/",
-    "react/": "https://esm.sh/react@^19.2.1/",
-    "vite": "https://esm.sh/vite@^7.2.7",
+    "recharts": "https://esm.sh/recharts@2.12.0?external=react,react-dom",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
 }
 </script>
-</head>
+  </head>
   <body>
     <div id="root"></div>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          // Add version param to force update check
-          navigator.serviceWorker.register('./sw.js?v=' + Date.now())
-            .then(registration => {
-              console.log('SW registered: ', registration);
-            })
-            .catch(registrationError => {
-              console.warn('SW registration skipped:', registrationError.message);
-            });
+          navigator.serviceWorker.register('./sw.js?v=' + Date.now());
         });
       }
     </script>

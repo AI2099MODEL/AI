@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { AppSettings, MarketSettings, Transaction } from '../types';
 import { Save, Building2, Bell, TrendingUp, Key, Check, Trash2, FileText } from 'lucide-react';
@@ -102,6 +103,17 @@ export const PageConfiguration: React.FC<PageConfigurationProps> = ({ settings, 
                              </div>
                              <button onClick={() => toggleBroker('DHAN')} className={`w-8 h-4 rounded-full relative transition-colors ${formData.activeBrokers.includes('DHAN') ? 'bg-green-500' : 'bg-slate-600'}`}>
                                  <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${formData.activeBrokers.includes('DHAN') ? 'left-4.5' : 'left-0.5'}`}></div>
+                             </button>
+                         </div>
+                    </div>
+                    <div className={`p-4 rounded-xl border transition-all ${formData.activeBrokers.includes('SHOONYA') ? 'bg-surface border-orange-500/50' : 'bg-surface/50 border-slate-800'}`}>
+                         <div className="flex justify-between items-center mb-2">
+                             <div className="flex items-center gap-2">
+                                 <div className="p-1.5 bg-orange-500/20 rounded text-orange-400"><Building2 size={16}/></div>
+                                 <h4 className="font-bold text-white text-sm">Shoonya</h4>
+                             </div>
+                             <button onClick={() => toggleBroker('SHOONYA')} className={`w-8 h-4 rounded-full relative transition-colors ${formData.activeBrokers.includes('SHOONYA') ? 'bg-green-500' : 'bg-slate-600'}`}>
+                                 <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${formData.activeBrokers.includes('SHOONYA') ? 'left-4.5' : 'left-0.5'}`}></div>
                              </button>
                          </div>
                     </div>

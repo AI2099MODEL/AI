@@ -17,14 +17,14 @@ import { PageConfiguration } from './components/PageConfiguration';
 import { AdBanner } from './components/AdBanner'; 
 
 const GLOBAL_STORAGE = { USER: 'aitrade_current_user_v2' };
-// Updated to include all mandatory fund types
+// Fix: Correctly initialize DEFAULT_FUNDS with all required asset types
 const DEFAULT_FUNDS: Funds = { stock: 1000000, mcx: 500000, forex: 500000, crypto: 500000 };
+// Fix: Correctly initialize DEFAULT_SETTINGS with all required markets
 const DEFAULT_SETTINGS: AppSettings = {
     initialFunds: DEFAULT_FUNDS,
     autoTradeConfig: { mode: 'PERCENTAGE', value: 5 },
     activeBrokers: ['PAPER', 'DHAN', 'SHOONYA'], 
-    // Updated to include all mandatory market types
-    enabledMarkets: { stocks: true, mcx: false, forex: false, crypto: false }, 
+    enabledMarkets: { stocks: true, mcx: true, forex: true, crypto: true }, 
     telegramBotToken: '',
     telegramChatId: ''
 };

@@ -5,7 +5,7 @@ export interface UserProfile {
   name: string;
   email: string;
   picture: string;
-  sub: string; // Google ID
+  sub: string;
   isGuest?: boolean;
 }
 

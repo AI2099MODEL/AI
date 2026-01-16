@@ -12,9 +12,8 @@ export const generatePNLReport = (
     return acc + (price * item.quantity);
   }, 0);
 
-  // Updated to include crypto in total cash calculation
-  const totalCurrentCash = currentFunds.stock + currentFunds.mcx + currentFunds.forex + (currentFunds.crypto || 0);
-  const totalInitial = initialFunds.stock + initialFunds.mcx + initialFunds.forex + (initialFunds.crypto || 0);
+  const totalCurrentCash = currentFunds.stock;
+  const totalInitial = initialFunds.stock;
 
   const totalEquity = totalCurrentCash + portfolioValue;
   const totalPNL = totalEquity - totalInitial;
@@ -23,11 +22,7 @@ export const generatePNLReport = (
 
   let report = `📊 *AI-Trade Pro PNL Report*\n📅 ${date}\n\n`;
   report += `💰 *Total Equity:* ₹${totalEquity.toFixed(2)}\n`;
-  report += `💵 *Total Cash:* ₹${totalCurrentCash.toFixed(2)}\n`;
-  report += `   • Equity: ₹${currentFunds.stock.toFixed(0)}\n`;
-  report += `   • MCX: ₹${currentFunds.mcx.toFixed(0)}\n`;
-  report += `   • Forex: ₹${currentFunds.forex.toFixed(0)}\n`;
-  report += `   • Crypto: ₹${(currentFunds.crypto || 0).toFixed(0)}\n`;
+  report += `💵 *Cash Balance:* ₹${totalCurrentCash.toFixed(2)}\n`;
   report += `📈 *Total PNL:* ₹${totalPNL.toFixed(2)} (${pnlPercent.toFixed(2)}%)\n\n`;
   
   if (portfolio.length > 0) {
@@ -36,7 +31,7 @@ export const generatePNLReport = (
         const price = marketData[p.symbol]?.price || p.avgCost;
         const val = price * p.quantity;
         const itemPnl = val - p.totalCost;
-        report += `• ${p.symbol} (${p.type}): ₹${itemPnl.toFixed(2)} (${((itemPnl/p.totalCost)*100).toFixed(1)}%)\n`;
+        report += `• ${p.symbol}: ₹${itemPnl.toFixed(2)} (${((itemPnl/p.totalCost)*100).toFixed(1)}%)\n`;
     });
   } else {
     report += `_No open positions._`;

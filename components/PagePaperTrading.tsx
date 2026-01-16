@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { PortfolioItem, MarketData, Funds, HoldingAnalysis, Transaction } from '../types';
 import { PortfolioTable } from './PortfolioTable';
@@ -32,7 +33,6 @@ export const PagePaperTrading: React.FC<PagePaperTradingProps> = ({
   const currentVal = paperHoldings.reduce((acc, h) => acc + ((marketData[h.symbol]?.price || h.avgCost) * h.quantity), 0);
   const totalCost = paperHoldings.reduce((acc, h) => acc + h.totalCost, 0);
   const totalPnl = currentVal - totalCost;
-  const pnlPercent = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
   
   const availableCash = funds.stock;
   const totalAccountValue = availableCash + currentVal;
@@ -100,7 +100,7 @@ export const PagePaperTrading: React.FC<PagePaperTradingProps> = ({
                        {!editMode ? (
                            <button onClick={() => { setTempFunds(funds); setEditMode(true); }} className="text-xs text-blue-400 font-bold hover:text-blue-300">Edit Funds</button>
                        ) : (
-                           <button onClick={handleFundUpdate} className="text-xs text-white bg-green-600 px-3 py-1.5 rounded-lg font-bold"><CheckCircle2 size={12}/> Save</button>
+                           <button onClick={handleFundUpdate} className="text-xs text-white bg-green-600 px-3 py-1.5 rounded-lg font-bold">Save</button>
                        )}
                    </div>
                    
@@ -124,7 +124,7 @@ export const PagePaperTrading: React.FC<PagePaperTradingProps> = ({
                                 <h3 className="font-bold text-white text-lg">{broker} Trading Bot</h3>
                                 <p className="text-xs text-slate-500 font-medium">Strategy: Momentum Breakout</p>
                             </div>
-                            <button onClick={() => onToggleBot(broker)} className={`p-3 rounded-xl transition-all shadow-lg ${isActive ? 'bg-green-600 text-white shadow-green-500/30' : 'bg-slate-700 text-slate-400'}`}>
+                            <button onClick={() => onToggleBot(broker)} className={`p-3 rounded-xl transition-all shadow-lg ${isActive ? 'bg-green-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
                               <Power size={22} />
                             </button>
                         </div>
