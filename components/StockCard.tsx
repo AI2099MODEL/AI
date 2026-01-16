@@ -22,19 +22,19 @@ export const StockCard: React.FC<StockCardProps> = ({ stock, marketData, onTrade
   const score = tech?.score || 0;
 
   let theme = {
-      border: stock.isTopPick ? 'border-yellow-500/50' : 'border-slate-700',
+      border: stock.isTopPick ? 'border-indigo-500/50' : 'border-slate-700',
       bgGradient: stock.isTopPick ? 'from-slate-900 to-indigo-900/20' : 'from-slate-800 to-slate-900',
-      iconColor: stock.isTopPick ? 'text-yellow-400' : 'text-blue-400',
+      iconColor: stock.isTopPick ? 'text-indigo-400' : 'text-blue-400',
       accent: 'text-slate-200',
-      glow: stock.isTopPick ? 'shadow-[0_0_15px_-5px_rgba(234,179,8,0.4)]' : 'shadow-none',
+      glow: stock.isTopPick ? 'shadow-[0_0_15px_-5px_rgba(79,70,229,0.4)]' : 'shadow-none',
       badgeBg: 'bg-slate-700'
   };
 
   return (
     <div className={`rounded-xl p-3 md:p-4 border ${theme.border} bg-gradient-to-br ${theme.bgGradient} transition-all duration-300 shadow-lg group relative overflow-hidden ${theme.glow}`}>
       {stock.isTopPick && (
-          <div className="absolute top-0 left-0 bg-yellow-500 text-black px-2 py-0.5 text-[8px] font-black uppercase tracking-tighter flex items-center gap-1 z-20">
-              <Star size={8} fill="black"/> AIRobots Pick
+          <div className="absolute top-0 left-0 bg-indigo-600 text-white px-2 py-0.5 text-[8px] font-black uppercase tracking-tighter flex items-center gap-1 z-20">
+              <Star size={8} fill="white"/> Pro Pick
           </div>
       )}
 
