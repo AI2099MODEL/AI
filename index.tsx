@@ -1,5 +1,5 @@
 
-import React, { ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 
@@ -13,8 +13,9 @@ interface ErrorBoundaryState {
   errorInfo: ErrorInfo | null;
 }
 
-// Fixed ErrorBoundary member access issues (state, setState, props) by using explicit React.Component extension
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+// Fixed: Using explicit Component import and property declaration to resolve member access issues (state, setState, props) that can occur in strict TypeScript environments when inheritance is not correctly mapped.
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  // Explicitly declaring state as a class property for better TypeScript inference across different compiler versions
   public state: ErrorBoundaryState = {
     hasError: false,
     error: null,
@@ -25,20 +26,18 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
     super(props);
   }
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    // Update state so the next render will show the fallback UI.
-    return { hasError: true, error, errorInfo: null };
+  static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
+    return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log details and update state with errorInfo
     console.error("App Crash Details:", error, errorInfo);
-    // Fixed: Explicitly calling setState which is available on React.Component
+    // Accessing setState method inherited from the Component base class
     this.setState({ errorInfo });
   }
 
   render() {
-    // Fixed: Correctly accessing state and props on the component instance
+    // Accessing the state property inherited from the Component base class
     if (this.state.hasError) {
       return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-[#0f172a] text-white p-6 font-mono text-center">
@@ -58,6 +57,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
       );
     }
 
+    // Accessing the props property inherited from the Component base class
     return this.props.children;
   }
 }

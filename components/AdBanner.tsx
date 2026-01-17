@@ -15,9 +15,9 @@ export const AdBanner: React.FC<AdBannerProps> = ({
   
   useEffect(() => {
     try {
-      // Accessing global adsbygoogle via window casting to resolve TS error
-      if ((window as any).adsbygoogle) {
-          (window as any).adsbygoogle.push({});
+      // In a React SPA, we must push to adsbygoogle manually when component mounts
+      if (window.adsbygoogle) {
+          window.adsbygoogle.push({});
       }
     } catch (e) {
       console.error("AdSense Error:", e);
