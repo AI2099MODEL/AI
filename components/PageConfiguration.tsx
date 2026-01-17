@@ -1,8 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AppSettings, Transaction } from '../types';
-import { Save, Building2, Bell, List, Key, Check, Trash2, FileText, Plus, X, Search } from 'lucide-react';
-import { checkAndRefreshStockList, addToWatchlist, removeFromWatchlist } from '../services/stockListService';
+import { Save, Building2, Bell, List, Trash2, FileText, Plus, X, Search, CheckCircle2, Circle } from 'lucide-react';
+import { checkAndRefreshStockList, addToWatchlist, removeFromWatchlist, MASTER_STOCK_LIST, updateWatchlist } from '../services/stockListService';
 
 interface PageConfigurationProps {
   settings: AppSettings;
@@ -19,6 +19,7 @@ export const PageConfiguration: React.FC<PageConfigurationProps> = ({ settings, 
   const [activeSubTab, setActiveSubTab] = useState<TabType>('WATCHLIST');
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [newSymbol, setNewSymbol] = useState('');
+  const [masterSearch, setMasterSearch] = useState('');
 
   useEffect(() => {
     loadWatchlist();
@@ -29,16 +30,21 @@ export const PageConfiguration: React.FC<PageConfigurationProps> = ({ settings, 
     setWatchlist(list);
   };
 
-  const handleAddSymbol = () => {
+  const handleToggleStock = (sym: string) => {
+      let newList: string[];
+      if (watchlist.includes(sym)) {
+          newList = watchlist.filter(s => s !== sym);
+      } else {
+          newList = [...watchlist, sym];
+      }
+      setWatchlist(updateWatchlist(newList));
+  };
+
+  const handleAddCustomSymbol = () => {
     if (!newSymbol.trim()) return;
     const updated = addToWatchlist(newSymbol.trim());
     setWatchlist(updated);
     setNewSymbol('');
-  };
-
-  const handleRemoveSymbol = (sym: string) => {
-    const updated = removeFromWatchlist(sym);
-    setWatchlist(updated);
   };
 
   const toggleBroker = (broker: any) => {
@@ -57,6 +63,15 @@ export const PageConfiguration: React.FC<PageConfigurationProps> = ({ settings, 
       window.location.reload();
     }
   };
+
+  const filteredMasterList = useMemo(() => {
+      const query = masterSearch.toLowerCase();
+      return MASTER_STOCK_LIST.filter(s => 
+          s.symbol.toLowerCase().includes(query) || 
+          s.name.toLowerCase().includes(query) ||
+          s.sector.toLowerCase().includes(query)
+      );
+  }, [masterSearch]);
 
   const tabs: {id: TabType, label: string, icon: React.ReactNode}[] = [
       { id: 'WATCHLIST', label: 'Watchlist', icon: <List size={16}/> },
@@ -89,43 +104,66 @@ export const PageConfiguration: React.FC<PageConfigurationProps> = ({ settings, 
         <div className="flex-1 overflow-y-auto custom-scrollbar space-y-6">
             {activeSubTab === 'WATCHLIST' && (
                 <div className="space-y-6 animate-slide-up">
-                    <section className="bg-surface p-5 rounded-2xl border border-slate-800">
-                        <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <Search size={14}/> Manage Scanned Stocks
-                        </h3>
+                    <section className="bg-surface p-5 rounded-2xl border border-slate-800 flex flex-col h-[60vh]">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest flex items-center gap-2">
+                                <Search size={14}/> Selection Universe
+                            </h3>
+                            <span className="text-[10px] bg-slate-800 px-2 py-1 rounded text-slate-400 font-mono">
+                                {watchlist.length} ACTIVE
+                            </span>
+                        </div>
                         
-                        <div className="flex gap-2 mb-6">
+                        <div className="relative mb-4">
+                            <Search className="absolute left-3 top-2.5 text-slate-500" size={14} />
                             <input 
                                 type="text" 
-                                value={newSymbol}
-                                onChange={(e) => setNewSymbol(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleAddSymbol()}
-                                placeholder="Enter Symbol (e.g. RELIANCE)"
-                                className="flex-1 bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-4 text-sm text-white focus:border-blue-500 outline-none transition-all"
+                                value={masterSearch}
+                                onChange={(e) => setMasterSearch(e.target.value)}
+                                placeholder="Search from CSV Universe..."
+                                className="w-full bg-slate-900 border border-slate-700 rounded-xl py-2 pl-9 pr-4 text-xs text-white focus:border-blue-500 outline-none transition-all"
                             />
-                            <button 
-                                onClick={handleAddSymbol}
-                                className="bg-blue-600 hover:bg-blue-500 text-white p-2.5 rounded-xl transition-all shadow-lg"
-                            >
-                                <Plus size={20} />
-                            </button>
                         </div>
 
-                        <div className="flex flex-wrap gap-2">
-                            {watchlist.map(sym => (
-                                <div key={sym} className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 group">
-                                    <span className="text-xs font-mono font-bold text-slate-200">{sym}</span>
+                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-2 mb-4">
+                            {filteredMasterList.map(stock => {
+                                const isSelected = watchlist.includes(stock.symbol);
+                                return (
                                     <button 
-                                        onClick={() => handleRemoveSymbol(sym)}
-                                        className="text-slate-500 hover:text-red-400 transition-colors"
+                                        key={stock.symbol}
+                                        onClick={() => handleToggleStock(stock.symbol)}
+                                        className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left ${isSelected ? 'bg-blue-600/10 border-blue-600/50' : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'}`}
                                     >
-                                        <X size={14} />
+                                        <div className="flex items-center gap-3">
+                                            {isSelected ? <CheckCircle2 size={18} className="text-blue-500" /> : <Circle size={18} className="text-slate-600" />}
+                                            <div>
+                                                <div className="text-xs font-bold text-white font-mono">{stock.symbol}</div>
+                                                <div className="text-[10px] text-slate-500 truncate max-w-[150px]">{stock.name}</div>
+                                            </div>
+                                        </div>
+                                        <div className="text-[9px] text-slate-600 uppercase font-bold tracking-tighter px-2 py-0.5 bg-slate-900/50 rounded-full">
+                                            {stock.sector}
+                                        </div>
                                     </button>
-                                </div>
-                            ))}
-                            {watchlist.length === 0 && (
-                                <p className="text-xs text-slate-500 italic p-2">Watchlist is empty. Add stocks to start scanning.</p>
-                            )}
+                                );
+                            })}
+                        </div>
+
+                        <div className="pt-4 border-t border-slate-800">
+                             <p className="text-[10px] text-slate-500 font-bold uppercase mb-2">Can't find it? Add Custom:</p>
+                             <div className="flex gap-2">
+                                <input 
+                                    type="text" 
+                                    value={newSymbol}
+                                    onChange={(e) => setNewSymbol(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleAddCustomSymbol()}
+                                    placeholder="Enter Symbol (e.g. ZOMATO)"
+                                    className="flex-1 bg-slate-900 border border-slate-700 rounded-xl py-2 px-3 text-xs text-white outline-none"
+                                />
+                                <button onClick={handleAddCustomSymbol} className="bg-slate-700 hover:bg-slate-600 text-white px-3 rounded-xl transition-all">
+                                    <Plus size={16} />
+                                </button>
+                            </div>
                         </div>
                     </section>
                 </div>
