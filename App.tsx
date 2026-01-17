@@ -6,7 +6,7 @@ import { runTechnicalScan, runIntradayAiAnalysis } from './services/recommendati
 import { StockRecommendation, PortfolioItem, MarketData, Transaction, AppSettings, UserProfile, Funds, HoldingAnalysis, StrategyRules, AssetType, BrokerID } from './types';
 import { TradeModal } from './components/TradeModal';
 import { runAutoTradeEngine } from './services/autoTradeEngine';
-import { BarChart3, Briefcase } from 'lucide-react';
+import { BarChart3, Briefcase, RefreshCw, Sparkles } from 'lucide-react';
 import { BottomNav } from './components/BottomNav';
 import { PageMarket } from './components/PageMarket';
 import { PagePaperTrading } from './components/PagePaperTrading';
@@ -16,14 +16,6 @@ import { PageStrategyLog } from './components/PageStrategyLog';
 import { sendTelegramMessage, generatePNLReport } from './services/telegramService';
 
 const STORAGE_PREFIX = 'aitrade_v3_';
-const DEFAULT_USER: UserProfile = {
-  name: 'Pro Trader',
-  email: 'trader@aitrade.pro',
-  picture: 'https://ui-avatars.com/api/?name=Pro+Trader&background=2563eb&color=fff',
-  sub: 'default-user',
-  isGuest: true
-};
-
 const DEFAULT_FUNDS: Funds = { stock: 1000000, mcx: 0, forex: 0, crypto: 0 };
 const DEFAULT_RULES: StrategyRules = {
     rsiBuyZone: 30,
@@ -59,6 +51,7 @@ const SplashScreen = ({ visible }: { visible: boolean }) => {
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
   const [activePage, setActivePage] = useState(0); 
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [funds, setFunds] = useState<Funds>(DEFAULT_FUNDS);
@@ -74,7 +67,6 @@ export default function App() {
   const [activeBots, setActiveBots] = useState<{ [key: string]: boolean }>({ 'PAPER': true }); 
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
   const [selectedStock, setSelectedStock] = useState<StockRecommendation | null>(null);
-  // Added state to track which broker was clicked for a trade (e.g. from live/paper tables)
   const [initialBroker, setInitialBroker] = useState<any>(undefined);
   
   const refreshIntervalRef = useRef<any>(null);
@@ -86,7 +78,18 @@ export default function App() {
   useEffect(() => { 
     const splashTimer = setTimeout(() => setShowSplash(false), 2000); 
     loadAppData();
-    return () => clearTimeout(splashTimer);
+
+    // Listen for Service Worker updates
+    const handleUpdate = () => {
+      console.log('App: Update Event Received');
+      setUpdateAvailable(true);
+    };
+    window.addEventListener('sw-update-available', handleUpdate);
+
+    return () => {
+      clearTimeout(splashTimer);
+      window.removeEventListener('sw-update-available', handleUpdate);
+    };
   }, []);
 
   const loadAppData = () => {
@@ -115,18 +118,8 @@ export default function App() {
 
   const notifyTelegram = useCallback(async (tx: Transaction, reason?: string) => {
     if (!settings.telegramBotToken || !settings.telegramChatId) return;
-    
     const emoji = tx.type === 'BUY' ? '🔵' : '🔴';
-    const message = `${emoji} *Bot Execution: ${tx.type}*\n` +
-                    `*Symbol:* ${tx.symbol}\n` +
-                    `*Type:* ${tx.timeframe || 'Intraday'}\n` +
-                    `*Qty:* ${tx.quantity}\n` +
-                    `*Price:* ₹${tx.price.toFixed(2)}\n` +
-                    `*Brokerage:* ₹${tx.brokerage || 20}\n` +
-                    `*Slice Logic:* AI-Managed Sliced Entry ⚡\n` +
-                    `*Reason:* ${reason || 'AI Momentum'}\n` +
-                    `*Timestamp:* ${new Date(tx.timestamp).toLocaleString()}`;
-    
+    const message = `${emoji} *Bot Execution: ${tx.type}*\nSymbol: ${tx.symbol}\nPrice: ₹${tx.price.toFixed(2)}\nReason: ${reason || 'AI Momentum'}`;
     await sendTelegramMessage(settings.telegramBotToken, settings.telegramChatId, message);
   }, [settings]);
 
@@ -167,38 +160,9 @@ export default function App() {
     setIsLoading(false);
   }, [recommendations, paperPortfolio, settings]);
 
-  const updateAiIntradayPicks = useCallback(async () => {
-    if (recommendations.length > 5) {
-        const picks = await runIntradayAiAnalysis(recommendations, marketData);
-        if (picks && picks.length > 0) {
-            setAiIntradayPicks(picks);
-            showNotification("Intrabot AI Analysis Updated");
-        }
-    }
-  }, [recommendations, marketData, showNotification]);
-
-  const checkAndSendReports = useCallback(() => {
-    const now = new Date();
-    const ist = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + (5.5 * 60 * 60 * 1000));
-    const day = ist.getDay();
-    const hours = ist.getHours();
-    const minutes = ist.getMinutes();
-    const dateKey = ist.toDateString();
-
-    if (day >= 1 && day <= 5 && hours === 15 && minutes === 30 && lastReportDateRef.current !== dateKey) {
-        lastReportDateRef.current = dateKey;
-        const dailyMsg = generatePNLReport(paperPortfolio, funds, settings.initialFunds, marketData, 'DAILY');
-        sendTelegramMessage(settings.telegramBotToken, settings.telegramChatId, dailyMsg);
-        showNotification("EOD Performance Report Sent");
-    }
-  }, [paperPortfolio, funds, settings, marketData, showNotification]);
-
   useEffect(() => {
     loadMarketData();
-    // Refresh market data every 15 seconds as requested for live experience
     refreshIntervalRef.current = setInterval(loadMarketData, 15000); 
-    aiPickIntervalRef.current = setInterval(updateAiIntradayPicks, 600000);
-    reportTimerRef.current = setInterval(checkAndSendReports, 30000);
     
     botIntervalRef.current = setInterval(() => {
         if (!activeBots['PAPER']) return;
@@ -237,101 +201,61 @@ export default function App() {
     return () => { 
         clearInterval(refreshIntervalRef.current); 
         clearInterval(botIntervalRef.current); 
-        clearInterval(aiPickIntervalRef.current);
-        clearInterval(reportTimerRef.current);
     };
-  }, [loadMarketData, updateAiIntradayPicks, checkAndSendReports, settings, paperPortfolio, marketData, funds, recommendations, activeBots, notifyTelegram, saveData, showNotification]);
+  }, [loadMarketData, settings, paperPortfolio, marketData, funds, recommendations, activeBots, notifyTelegram, saveData, showNotification]);
 
-  // Updated signatures to include broker as 4th argument, matching TradeModal expectations
   const handleBuy = async (symbol: string, quantity: number, price: number, broker: any = 'PAPER') => {
-      if (broker !== 'PAPER') {
-          showNotification(`Live trading for ${broker} not implemented in this demo.`);
-          return;
-      }
       const brokerage = 20;
       const cost = (quantity * price) + brokerage;
       const rec = recommendations.find(r => r.symbol === symbol);
       const tx: Transaction = { id: Date.now().toString(), type: 'BUY', symbol, assetType: 'STOCK', quantity, price, timestamp: Date.now(), broker: 'PAPER', brokerage, timeframe: rec?.timeframe };
       const newItem: PortfolioItem = { symbol, type: 'STOCK' as AssetType, quantity, avgCost: price, totalCost: cost, broker: 'PAPER' as BrokerID, timeframe: rec?.timeframe };
-      setPaperPortfolio(prev => {
-        const next = [...prev, newItem];
-        saveData('portfolio', next);
-        return next;
-      });
-      setFunds(prev => {
-        const next = { ...prev, stock: prev.stock - cost };
-        saveData('funds', next);
-        return next;
-      });
-      setTransactions(prev => {
-        const next = [...prev, tx];
-        saveData('transactions', next);
-        return next;
-      });
+      setPaperPortfolio(prev => { const next = [...prev, newItem]; saveData('portfolio', next); return next; });
+      setFunds(prev => { const next = { ...prev, stock: prev.stock - cost }; saveData('funds', next); return next; });
+      setTransactions(prev => { const next = [...prev, tx]; saveData('transactions', next); return next; });
       notifyTelegram(tx, "Manual Entry");
   };
 
-  // Updated signatures to include broker as 4th argument, matching TradeModal expectations
   const handleSell = async (symbol: string, quantity: number, price: number, broker: any = 'PAPER') => {
-      if (broker !== 'PAPER') {
-          showNotification(`Live trading for ${broker} not implemented in this demo.`);
-          return;
-      }
       const brokerage = 20;
       const proceeds = (quantity * price) - brokerage;
       const item = paperPortfolio.find(p => p.symbol === symbol);
       const tx: Transaction = { id: Date.now().toString(), type: 'SELL', symbol, assetType: 'STOCK', quantity, price, timestamp: Date.now(), broker: 'PAPER', brokerage, timeframe: item?.timeframe };
-      setPaperPortfolio(prev => {
-        const next = prev.filter(p => p.symbol !== symbol);
-        saveData('portfolio', next);
-        return next;
-      });
-      setFunds(prev => {
-        const next = { ...prev, stock: prev.stock + proceeds };
-        saveData('funds', next);
-        return next;
-      });
-      setTransactions(prev => {
-        const next = [...prev, tx];
-        saveData('transactions', next);
-        return next;
-      });
+      setPaperPortfolio(prev => { const next = prev.filter(p => p.symbol !== symbol); saveData('portfolio', next); return next; });
+      setFunds(prev => { const next = { ...prev, stock: prev.stock + proceeds }; saveData('funds', next); return next; });
+      setTransactions(prev => { const next = [...prev, tx]; saveData('transactions', next); return next; });
       notifyTelegram(tx, "Manual Exit");
   };
 
-  // Added logic to initiate a sell action by opening the modal with context
   const handleInitiateSell = useCallback((symbol: string, broker: any) => {
     const rec = recommendations.find(r => r.symbol === symbol);
     const mData = marketData[symbol];
-    
-    // Construct a minimal recommendation object if not in currently scanned list
-    const stockRec: StockRecommendation = rec || {
-        symbol,
-        name: symbol.split('.')[0],
-        type: 'STOCK',
-        sector: 'Holdings',
-        currentPrice: mData?.price || 0,
-        reason: 'Existing Position',
-        riskLevel: 'Medium',
-        targetPrice: (mData?.price || 0) * 1.1,
-        lotSize: 1
-    };
-    
+    const stockRec: StockRecommendation = rec || { symbol, name: symbol.split('.')[0], type: 'STOCK', sector: 'Holdings', currentPrice: mData?.price || 0, reason: 'Existing Position', riskLevel: 'Medium', targetPrice: (mData?.price || 0) * 1.1, lotSize: 1 };
     setInitialBroker(broker);
     setSelectedStock(stockRec);
     setIsTradeModalOpen(true);
   }, [recommendations, marketData]);
 
-  const paperStats = useMemo(() => {
-    const currentVal = paperPortfolio.reduce((acc, h) => acc + ((marketData[h.symbol]?.price || h.avgCost) * h.quantity), 0);
-    const totalCost = paperPortfolio.reduce((acc, h) => acc + h.totalCost, 0);
-    return { currentVal, totalCost, totalPnl: currentVal - totalCost };
-  }, [paperPortfolio, marketData]);
-
   if (showSplash) return <SplashScreen visible={true} />;
 
   return (
     <div className="h-full flex flex-col bg-background text-slate-100 overflow-hidden">
+      {/* UPDATE NOTIFICATION */}
+      {updateAvailable && (
+        <div className="fixed top-0 left-0 right-0 z-[100] bg-blue-600 p-3 flex items-center justify-between shadow-2xl animate-fade-in">
+           <div className="flex items-center gap-3">
+              <Sparkles className="text-white animate-pulse" size={20} />
+              <span className="text-xs font-black uppercase tracking-widest text-white">New version available!</span>
+           </div>
+           <button 
+             onClick={() => window.location.reload()}
+             className="px-4 py-1.5 bg-white text-blue-600 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+           >
+             Update Now
+           </button>
+        </div>
+      )}
+
       {notification && (
         <div className="fixed top-4 left-4 right-4 z-[60] bg-slate-800 text-white px-4 py-3 rounded-xl border border-slate-700 animate-slide-up text-xs font-bold text-center shadow-2xl">
           {notification}

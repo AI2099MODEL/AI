@@ -15,10 +15,13 @@ interface ErrorBoundaryState {
 
 /**
  * ErrorBoundary class component to catch rendering errors.
- * Fixed: Explicitly importing and extending Component to ensure that properties 
- * like state, setState and props are correctly recognized by TypeScript.
+ * Fixed: Explicitly declaring state type and extending React.Component to ensure 
+ * that properties like state, setState and props are correctly recognized by TypeScript.
  */
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  // Fixed: Explicit declaration of state property to satisfy TypeScript compiler.
+  public state: ErrorBoundaryState;
+
   constructor(props: ErrorBoundaryProps) {
     super(props);
     // Initializing state in constructor

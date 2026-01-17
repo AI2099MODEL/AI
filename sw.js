@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'aitrade-v3';
+const CACHE_NAME = 'aitrade-v4-' + Date.now(); // Dynamic name to force update
 const urlsToCache = [
   '/',
   '/index.html',
@@ -7,28 +7,25 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', (event) => {
-  // Do not force skipWaiting here to allow user-controlled updates
+  // Force the waiting service worker to become the active service worker.
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => cache.addAll(urlsToCache))
   );
 });
 
-// Allow the client to force the update
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-});
-
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     Promise.all([
-      self.clients.claim(), // TAKE CONTROL IMMEDIATELY AFTER ACTIVATION
+      // Take control of all open clients immediately
+      self.clients.claim(),
+      // Delete all old caches
       caches.keys().then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
             if (cacheName !== CACHE_NAME) {
+              console.log('Service Worker: Clearing Old Cache', cacheName);
               return caches.delete(cacheName);
             }
           })
@@ -39,24 +36,23 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // NAVIGATION REQUESTS: Network First (Ensures fresh index.html)
+  // NAVIGATION REQUESTS: Always try network first for the main document
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request)
-        .catch(() => caches.match(event.request))
+      fetch(event.request).catch(() => caches.match(event.request))
     );
     return;
   }
 
-  // ASSETS: Stale-While-Revalidate (Fast load, background update)
+  // OTHER ASSETS: Stale-while-revalidate
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
-           const responseToCache = networkResponse.clone();
-           caches.open(CACHE_NAME).then((cache) => {
-             cache.put(event.request, responseToCache);
-           });
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
         }
         return networkResponse;
       }).catch(() => cachedResponse);

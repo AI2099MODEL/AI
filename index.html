@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -12,9 +13,6 @@
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3594/3594435.png">
     <title>AI-Trade Pro</title>
     
-    <!-- Google AdSense -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ID_HERE" crossorigin="anonymous"></script>
-
     <!-- Polyfill for process.env -->
     <script>
       window.process = window.process || { env: {} };
@@ -75,13 +73,13 @@
     "react": "https://esm.sh/react@18.2.0",
     "react/": "https://esm.sh/react@18.2.0/",
     "react-dom": "https://esm.sh/react-dom@18.2.0",
-    "react-dom/": "https://esm.sh/react-dom@18.2.0/",
     "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
     "lucide-react": "https://esm.sh/lucide-react@0.460.0?external=react,react-dom",
     "@google/genai": "https://esm.sh/@google/genai",
     "recharts": "https://esm.sh/recharts@2.12.0?external=react,react-dom",
     "vite": "https://esm.sh/vite@^5.1.4",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^4.2.1"
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^4.2.1",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
   }
 }
 </script>
@@ -89,9 +87,19 @@
   <body>
     <div id="root"></div>
     <script>
-      if ('serviceWorker' in navigator && (window.location.origin.includes('localhost') || window.location.origin.includes('vercel.app'))) {
+      if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js?v=' + Date.now()).catch(err => console.log('SW registration failed:', err));
+          navigator.serviceWorker.register('./sw.js?v=' + Date.now()).then(registration => {
+            registration.onupdatefound = () => {
+              const installingWorker = registration.installing;
+              installingWorker.onstatechange = () => {
+                if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  // New content is available; notify the app
+                  window.dispatchEvent(new CustomEvent('sw-update-available'));
+                }
+              };
+            };
+          }).catch(err => console.log('SW registration failed:', err));
         });
       }
     </script>

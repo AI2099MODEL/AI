@@ -75,7 +75,9 @@ export const PageConfiguration: React.FC<PageConfigurationProps> = ({ settings, 
     const next: Record<string, string[]> = {};
     const searchLower = searchTerm.toLowerCase();
     
-    Object.entries(groupedUniverse).forEach(([industry, stocks]) => {
+    // Fixed: Cast Object.entries result to explicitly type 'stocks' as string[] 
+    // to resolve 'Property filter does not exist on type unknown' error.
+    (Object.entries(groupedUniverse) as [string, string[]][]).forEach(([industry, stocks]) => {
       const matchingStocks = stocks.filter(s => s.toLowerCase().includes(searchLower));
       const industryMatches = industry.toLowerCase().includes(searchLower);
       
