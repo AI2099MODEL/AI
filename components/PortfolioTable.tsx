@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { PortfolioItem, MarketData, AssetType, HoldingAnalysis } from '../types';
-import { TrendingUp, TrendingDown, DollarSign, Globe, BarChart2, Box, Cpu, Info, X } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Globe, BarChart2, Cpu, X } from 'lucide-react';
 
 interface PortfolioTableProps {
   portfolio: PortfolioItem[];
@@ -12,7 +12,7 @@ interface PortfolioTableProps {
   hideBroker?: boolean;
 }
 
-export const PortfolioTable: React.FC<PortfolioTableProps> = ({ 
+export const PortfolioTable: React.FC<PortfolioTableProps> = React.memo(({ 
   portfolio, 
   marketData, 
   analysisData = {}, 
@@ -30,7 +30,6 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({
   }
 
   const getAssetIcon = (type: AssetType) => {
-      // Fix: Now comparable as AssetType includes these values
       switch(type) {
           case 'MCX': return <Globe size={14} className="text-yellow-400" />;
           case 'FOREX': return <DollarSign size={14} className="text-green-400" />;
@@ -84,8 +83,6 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({
 
             return (
               <tr key={`${item.symbol}-${item.broker}-${idx}`} className="border-b border-slate-800/50 hover:bg-slate-800/50 transition-colors text-[10px] md:text-sm group">
-                
-                {/* Symbol Col */}
                 <td className="p-2 md:p-3">
                     <div className="flex items-center gap-2 md:gap-3">
                         <div className="p-1.5 md:p-2 bg-slate-800 rounded-lg border border-slate-700/50 hidden md:block">
@@ -100,25 +97,17 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({
                         </div>
                     </div>
                 </td>
-                
-                {/* Desktop Cols */}
                 <td className="p-3 text-right text-slate-300 font-mono hidden md:table-cell">{item.quantity.toFixed(item.type === 'CRYPTO' ? 4 : 0)}</td>
                 <td className="p-3 text-right text-slate-400 font-mono hidden md:table-cell">{formatCurrency(item.avgCost)}</td>
-                
-                {/* LTP */}
                 <td className="p-2 md:p-3 text-right text-white font-mono font-medium text-[10px] md:text-sm">
                     {formatCurrency(currentPrice)}
                 </td>
-                
-                {/* Desktop Cols */}
                 <td className="p-3 text-right text-slate-400 font-mono hidden md:table-cell">
                     {formatCurrency(investedAmount)}
                 </td>
                 <td className="p-3 text-right text-white font-mono font-bold hidden md:table-cell">
                     {formatCurrency(currentValue)}
                 </td>
-
-                {/* P&L - Horizontal on Mobile, Stacked on Desktop */}
                 <td className={`p-2 md:p-3 text-right font-bold font-mono ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
                   <div className="flex flex-row md:flex-col items-center justify-end gap-1 md:items-end md:gap-0">
                     <span className="whitespace-nowrap">{pl > 0 ? '+' : ''}{formatCurrency(pl)}</span>
@@ -127,8 +116,6 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({
                     </span>
                   </div>
                 </td>
-                
-                {/* AI - Desktop */}
                 {showAiInsights && (
                     <td className="p-3 text-center hidden md:table-cell">
                     {analysis ? (
@@ -146,8 +133,6 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({
                     )}
                     </td>
                 )}
-
-                {/* Action */}
                 <td className="p-2 md:p-3 text-center">
                   <button
                     onClick={() => onSell(item.symbol, item.broker)}
@@ -164,4 +149,4 @@ export const PortfolioTable: React.FC<PortfolioTableProps> = ({
       </table>
     </div>
   );
-};
+});

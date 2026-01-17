@@ -6,11 +6,11 @@ const YAHOO_CHART_BASE = "https://query1.finance.yahoo.com/v8/finance/chart/";
 
 // Persistent cache for the current session to avoid redundant network calls
 const marketCache: Record<string, { data: StockData, timestamp: number }> = {};
+// Map to track active requests and prevent duplicates
+const pendingRequests = new Map<string, Promise<StockData | null>>();
 
 /**
  * Get TTL based on the interval. 
- * Intraday (1m, 5m, 15m) needs fresh data. 
- * Daily/Weekly data changes much slower.
  */
 const getCacheTTL = (interval: string): number => {
   if (interval.includes('m')) return 2 * 60 * 1000; // 2 mins for intraday
@@ -30,13 +30,10 @@ async function fetchWithProxy(targetUrl: string): Promise<any> {
 
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); 
+        const timeoutId = setTimeout(() => controller.abort(), 6000); 
 
-        // Promise.any returns the first fulfilled promise.
-        // We use a small delay between proxy attempts to avoid flooding but still race.
         const fastestResponse = await (Promise as any).any(proxies.map((url, index) => 
             new Promise((resolve, reject) => {
-                // Staggered start to give the primary proxy a head start
                 setTimeout(() => {
                     fetch(url, { signal: controller.signal })
                         .then(async (res) => {
@@ -46,7 +43,7 @@ async function fetchWithProxy(targetUrl: string): Promise<any> {
                             resolve(data);
                         })
                         .catch(reject);
-                }, index * 150); 
+                }, index * 100); 
             })
         ));
 
@@ -65,8 +62,9 @@ async function parseYahooResponse(data: any): Promise<StockData | null> {
     const quotes = result.indicators.quote[0];
     const candles: Candle[] = [];
 
-    // Fast mapping of candle data
-    for (let i = 0; i < timestamps.length; i++) {
+    // Optimized loop for faster parsing
+    const len = timestamps.length;
+    for (let i = 0; i < len; i++) {
         const close = quotes.close[i];
         const open = quotes.open[i];
         if (close != null && open != null) {
@@ -104,30 +102,42 @@ export const fetchRealStockData = async (
     range: string = "1d"
 ): Promise<StockData | null> => {
     const cacheKey = `${symbol}_${interval}_${range}`;
+    
+    // Check pending requests first to prevent redundant calls
+    if (pendingRequests.has(cacheKey)) {
+        return pendingRequests.get(cacheKey)!;
+    }
+
     const cached = marketCache[cacheKey];
     const ttl = getCacheTTL(interval);
     
-    // Return from cache immediately if fresh
     if (cached && (Date.now() - cached.timestamp < ttl)) {
         return cached.data;
     }
 
-    const ticker = symbol.toUpperCase().includes('.') ? symbol.toUpperCase() : `${symbol.toUpperCase()}.NS`;
-    
-    try {
-        const cb = Math.floor(Date.now() / 15000); // 15s windowed cache buster
-        const targetUrl = `${YAHOO_CHART_BASE}${ticker}?interval=${interval}&range=${range}&_cb=${cb}`;
+    const requestPromise = (async () => {
+        const ticker = symbol.toUpperCase().includes('.') ? symbol.toUpperCase() : `${symbol.toUpperCase()}.NS`;
         
-        const yahooRaw = await fetchWithProxy(targetUrl);
-        if (yahooRaw) {
-            const parsed = await parseYahooResponse(yahooRaw);
-            if (parsed) {
-                marketCache[cacheKey] = { data: parsed, timestamp: Date.now() };
-                return parsed;
+        try {
+            const cb = Math.floor(Date.now() / 20000); // 20s cache buster
+            const targetUrl = `${YAHOO_CHART_BASE}${ticker}?interval=${interval}&range=${range}&_cb=${cb}`;
+            
+            const yahooRaw = await fetchWithProxy(targetUrl);
+            if (yahooRaw) {
+                const parsed = await parseYahooResponse(yahooRaw);
+                if (parsed) {
+                    marketCache[cacheKey] = { data: parsed, timestamp: Date.now() };
+                    return parsed;
+                }
             }
+        } catch (e) {
+            console.warn(`Fetch error for ${symbol}:`, e);
+        } finally {
+            pendingRequests.delete(cacheKey);
         }
-    } catch (e) {
-        console.warn(`Fetch error for ${symbol}:`, e);
-    }
-    return null;
+        return null;
+    })();
+
+    pendingRequests.set(cacheKey, requestPromise);
+    return requestPromise;
 };

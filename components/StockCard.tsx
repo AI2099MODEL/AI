@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { StockRecommendation, MarketData } from '../types';
-import { TrendingUp, TrendingDown, Zap, BarChart2, Target, Scan, Star, ExternalLink, Calendar } from 'lucide-react';
+import { TrendingUp, TrendingDown, Zap, BarChart2, Target, Scan, Star, ExternalLink } from 'lucide-react';
 import { getMarketStatus } from '../services/marketStatusService';
 
 interface StockCardProps {
@@ -9,7 +10,7 @@ interface StockCardProps {
   onTrade: (stock: StockRecommendation) => void;
 }
 
-export const StockCard: React.FC<StockCardProps> = ({ stock, marketData, onTrade }) => {
+export const StockCard: React.FC<StockCardProps> = React.memo(({ stock, marketData, onTrade }) => {
   const currentData = marketData[stock.symbol];
   const price = currentData ? currentData.price : stock.currentPrice;
   const change = currentData ? currentData.changePercent : 0;
@@ -117,4 +118,4 @@ export const StockCard: React.FC<StockCardProps> = ({ stock, marketData, onTrade
       </div>
     </div>
   );
-};
+});

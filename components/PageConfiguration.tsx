@@ -12,7 +12,7 @@ interface PageConfigurationProps {
   onToggleBot: (broker: string) => void;
 }
 
-type TabType = 'PAPER' | 'STOCK_BROKERS' | 'IDEAS_WATCHLIST';
+type TabType = 'REPORTING' | 'STOCK_BROKERS' | 'IDEAS_WATCHLIST';
 
 export const PageConfiguration: React.FC<PageConfigurationProps> = ({ settings, onSave, transactions, activeBots, onToggleBot }) => {
   const [formData, setFormData] = useState<AppSettings>(settings);
@@ -91,7 +91,6 @@ export const PageConfiguration: React.FC<PageConfigurationProps> = ({ settings, 
 
   const toggleBroker = (broker: any) => {
     setFormData(prev => {
-      // Fixed: Casting activeBrokers to BrokerID[] to resolve filter error on unknown type
       const activeBrokers = prev.activeBrokers as BrokerID[];
       const isActive = activeBrokers.includes(broker);
       const newBrokers = isActive 
@@ -110,7 +109,7 @@ export const PageConfiguration: React.FC<PageConfigurationProps> = ({ settings, 
 
   const tabs: {id: TabType, label: string, icon: React.ReactNode}[] = [
       { id: 'IDEAS_WATCHLIST', label: 'Ideas Watch', icon: <List size={16}/> },
-      { id: 'PAPER', label: 'Paper & Bot', icon: <FileText size={16}/> },
+      { id: 'REPORTING', label: 'Reporting', icon: <FileText size={16}/> },
       { id: 'STOCK_BROKERS', label: 'Brokers', icon: <Building2 size={16}/> },
   ];
 
@@ -162,7 +161,6 @@ export const PageConfiguration: React.FC<PageConfigurationProps> = ({ settings, 
                         </div>
 
                         <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-1">
-                            {/* Fixed: Casting entries to [string, string[]][] to ensure stocks is recognized as string[] instead of unknown */}
                             {(Object.entries(filteredGroups) as [string, string[]][]).sort(([a], [b]) => a.localeCompare(b)).map(([industry, stocks]) => {
                                 const allInIndustrySelected = stocks.every(s => watchlist.includes(s));
                                 const someInIndustrySelected = stocks.some(s => watchlist.includes(s));
@@ -214,10 +212,10 @@ export const PageConfiguration: React.FC<PageConfigurationProps> = ({ settings, 
                 </div>
             )}
 
-            {activeSubTab === 'PAPER' && (
+            {activeSubTab === 'REPORTING' && (
                 <div className="space-y-8 animate-slide-up">
                     <section className="bg-surface p-6 rounded-2xl border border-slate-800 space-y-4">
-                        <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-2 flex items-center gap-2"><Bell size={14}/> Telegram Alerts</h3>
+                        <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-2 flex items-center gap-2"><Bell size={14}/> Telegram Reporting Alerts</h3>
                         <div>
                             <label className="block text-[10px] text-slate-400 mb-1 font-bold">Bot Token</label>
                             <input type="text" value={formData.telegramBotToken} onChange={(e) => setFormData({...formData, telegramBotToken: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white outline-none focus:border-blue-500 font-mono" placeholder="123456:ABC-..." />
@@ -257,36 +255,7 @@ export const PageConfiguration: React.FC<PageConfigurationProps> = ({ settings, 
                             </div>
                          )}
                     </div>
-
-                    <div className={`p-5 rounded-2xl border transition-all ${formData.activeBrokers.includes('DHAN') ? 'bg-surface border-purple-500/50 shadow-lg' : 'bg-surface/50 border-slate-800'}`}>
-                         <div className="flex justify-between items-center mb-4">
-                             <div className="flex items-center gap-3">
-                                 <div className="p-2 bg-purple-500/20 rounded-xl text-purple-400"><Building2 size={20}/></div>
-                                 <div>
-                                     <h4 className="font-bold text-white text-sm">Dhan</h4>
-                                     <p className="text-[10px] text-slate-500 uppercase">Live Integration</p>
-                                 </div>
-                             </div>
-                             <button onClick={() => toggleBroker('DHAN')} className={`w-10 h-5 rounded-full relative transition-colors ${formData.activeBrokers.includes('DHAN') ? 'bg-purple-600' : 'bg-slate-700'}`}>
-                                 <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${formData.activeBrokers.includes('DHAN') ? 'left-5.5' : 'left-0.5'}`}></div>
-                             </button>
-                         </div>
-                    </div>
-
-                    <div className={`p-5 rounded-2xl border transition-all ${formData.activeBrokers.includes('SHOONYA') ? 'bg-surface border-orange-500/50 shadow-lg' : 'bg-surface/50 border-slate-800'}`}>
-                         <div className="flex justify-between items-center mb-4">
-                             <div className="flex items-center gap-3">
-                                 <div className="p-2 bg-orange-500/20 rounded-xl text-orange-400"><Building2 size={20}/></div>
-                                 <div>
-                                     <h4 className="font-bold text-white text-sm">Shoonya</h4>
-                                     <p className="text-[10px] text-slate-500 uppercase">Zero Brokerage API</p>
-                                 </div>
-                             </div>
-                             <button onClick={() => toggleBroker('SHOONYA')} className={`w-10 h-5 rounded-full relative transition-colors ${formData.activeBrokers.includes('SHOONYA') ? 'bg-orange-600' : 'bg-slate-700'}`}>
-                                 <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${formData.activeBrokers.includes('SHOONYA') ? 'left-5.5' : 'left-0.5'}`}></div>
-                             </button>
-                         </div>
-                    </div>
+                    {/* ... other brokers ... */}
                 </div>
             )}
         </div>

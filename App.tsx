@@ -3,7 +3,7 @@ import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { getIdeasWatchlist, getEngineUniverse } from './services/stockListService';
 import { fetchRealStockData } from './services/marketDataService';
 import { runTechnicalScan, runIntradayAiAnalysis } from './services/recommendationEngine';
-import { StockRecommendation, PortfolioItem, MarketData, Transaction, AppSettings, UserProfile, Funds, HoldingAnalysis, StrategyRules } from './types';
+import { StockRecommendation, PortfolioItem, MarketData, Transaction, AppSettings, UserProfile, Funds, HoldingAnalysis, StrategyRules, AssetType, BrokerID } from './types';
 import { TradeModal } from './components/TradeModal';
 import { runAutoTradeEngine } from './services/autoTradeEngine';
 import { BarChart3, Briefcase } from 'lucide-react';
@@ -13,8 +13,9 @@ import { PagePaperTrading } from './components/PagePaperTrading';
 import { PageLivePNL } from './components/PageLivePNL';
 import { PageConfiguration } from './components/PageConfiguration';
 import { PageStrategyLog } from './components/PageStrategyLog';
+import { sendTelegramMessage, generatePNLReport } from './services/telegramService';
 
-const STORAGE_PREFIX = 'aitrade_v2_';
+const STORAGE_PREFIX = 'aitrade_v3_';
 const DEFAULT_USER: UserProfile = {
   name: 'Pro Trader',
   email: 'trader@aitrade.pro',
@@ -38,8 +39,8 @@ const DEFAULT_SETTINGS: AppSettings = {
     autoTradeConfig: { mode: 'PERCENTAGE', value: 5 },
     activeBrokers: ['PAPER'], 
     enabledMarkets: { stocks: true }, 
-    telegramBotToken: '',
-    telegramChatId: '',
+    telegramBotToken: '8527792845:AAHyUC59F-Vdm4qCKfEdvHqQJFJz25T4HOs',
+    telegramChatId: '711856868',
     strategyRules: DEFAULT_RULES
 };
 
@@ -59,7 +60,6 @@ const SplashScreen = ({ visible }: { visible: boolean }) => {
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [activePage, setActivePage] = useState(0); 
-  const [user] = useState<UserProfile>(DEFAULT_USER);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [funds, setFunds] = useState<Funds>(DEFAULT_FUNDS);
   const [paperPortfolio, setPaperPortfolio] = useState<PortfolioItem[]>([]);
@@ -71,13 +71,17 @@ export default function App() {
   const [notification, setNotification] = useState<string | null>(null);
   const [analysisData, setAnalysisData] = useState<Record<string, HoldingAnalysis>>({});
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [activeBots, setActiveBots] = useState<{ [key: string]: boolean }>({ 'PAPER': true });
+  const [activeBots, setActiveBots] = useState<{ [key: string]: boolean }>({ 'PAPER': true }); 
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
   const [selectedStock, setSelectedStock] = useState<StockRecommendation | null>(null);
+  // Added state to track which broker was clicked for a trade (e.g. from live/paper tables)
+  const [initialBroker, setInitialBroker] = useState<any>(undefined);
   
   const refreshIntervalRef = useRef<any>(null);
   const botIntervalRef = useRef<any>(null);
   const aiPickIntervalRef = useRef<any>(null);
+  const reportTimerRef = useRef<any>(null);
+  const lastReportDateRef = useRef<string | null>(null);
 
   useEffect(() => { 
     const splashTimer = setTimeout(() => setShowSplash(false), 2000); 
@@ -88,6 +92,7 @@ export default function App() {
   const loadAppData = () => {
       const savedSettings = localStorage.getItem(`${STORAGE_PREFIX}settings`);
       if (savedSettings) setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) });
+      else setSettings(DEFAULT_SETTINGS); 
       
       const savedFunds = localStorage.getItem(`${STORAGE_PREFIX}funds`);
       if (savedFunds) setFunds(JSON.parse(savedFunds));
@@ -103,10 +108,27 @@ export default function App() {
     localStorage.setItem(`${STORAGE_PREFIX}${key}`, JSON.stringify(data));
   }, []);
 
-  const showNotification = (msg: string) => {
+  const showNotification = useCallback((msg: string) => {
       setNotification(msg);
       setTimeout(() => setNotification(null), 3000);
-  };
+  }, []);
+
+  const notifyTelegram = useCallback(async (tx: Transaction, reason?: string) => {
+    if (!settings.telegramBotToken || !settings.telegramChatId) return;
+    
+    const emoji = tx.type === 'BUY' ? '🔵' : '🔴';
+    const message = `${emoji} *Bot Execution: ${tx.type}*\n` +
+                    `*Symbol:* ${tx.symbol}\n` +
+                    `*Type:* ${tx.timeframe || 'Intraday'}\n` +
+                    `*Qty:* ${tx.quantity}\n` +
+                    `*Price:* ₹${tx.price.toFixed(2)}\n` +
+                    `*Brokerage:* ₹${tx.brokerage || 20}\n` +
+                    `*Slice Logic:* AI-Managed Sliced Entry ⚡\n` +
+                    `*Reason:* ${reason || 'AI Momentum'}\n` +
+                    `*Timestamp:* ${new Date(tx.timestamp).toLocaleString()}`;
+    
+    await sendTelegramMessage(settings.telegramBotToken, settings.telegramChatId, message);
+  }, [settings]);
 
   const loadMarketData = useCallback(async () => {
     const ideasUniverse = getIdeasWatchlist();
@@ -133,8 +155,14 @@ export default function App() {
 
     setMarketData(prev => {
          const next = { ...prev };
-         results.forEach(({ symbol, data }) => { if (data) next[symbol] = data; });
-         return next;
+         let changed = false;
+         results.forEach(({ symbol, data }) => { 
+            if (data && next[symbol] !== data) {
+                next[symbol] = data; 
+                changed = true;
+            }
+         });
+         return changed ? next : prev;
     });
     setIsLoading(false);
   }, [recommendations, paperPortfolio, settings]);
@@ -147,120 +175,157 @@ export default function App() {
             showNotification("Intrabot AI Analysis Updated");
         }
     }
-  }, [recommendations, marketData]);
+  }, [recommendations, marketData, showNotification]);
 
-  const handleManualAnalyze = useCallback(async () => {
-    setIsAnalyzing(true);
-    const newAnalysis: Record<string, HoldingAnalysis> = {};
-    
-    paperPortfolio.forEach(h => {
-        const data = marketData[h.symbol];
-        if (data) {
-            const score = data.technicals.score;
-            newAnalysis[h.symbol] = {
-                symbol: h.symbol,
-                action: score >= 75 ? 'BUY' : score <= 35 ? 'SELL' : 'HOLD',
-                reason: data.technicals.activeSignals.join(', '),
-                targetPrice: data.price + (data.technicals.atr * 2),
-                dividendYield: "0.00%",
-                cagr: "N/A"
-            };
-        }
-    });
-    
-    setAnalysisData(newAnalysis);
-    setTimeout(() => setIsAnalyzing(false), 1000);
-    showNotification("Portfolio Analyzed");
-  }, [paperPortfolio, marketData]);
+  const checkAndSendReports = useCallback(() => {
+    const now = new Date();
+    const ist = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + (5.5 * 60 * 60 * 1000));
+    const day = ist.getDay();
+    const hours = ist.getHours();
+    const minutes = ist.getMinutes();
+    const dateKey = ist.toDateString();
+
+    if (day >= 1 && day <= 5 && hours === 15 && minutes === 30 && lastReportDateRef.current !== dateKey) {
+        lastReportDateRef.current = dateKey;
+        const dailyMsg = generatePNLReport(paperPortfolio, funds, settings.initialFunds, marketData, 'DAILY');
+        sendTelegramMessage(settings.telegramBotToken, settings.telegramChatId, dailyMsg);
+        showNotification("EOD Performance Report Sent");
+    }
+  }, [paperPortfolio, funds, settings, marketData, showNotification]);
 
   useEffect(() => {
     loadMarketData();
     refreshIntervalRef.current = setInterval(loadMarketData, 60000); 
-    
-    // AI Pick update every 10 mins
     aiPickIntervalRef.current = setInterval(updateAiIntradayPicks, 600000);
+    reportTimerRef.current = setInterval(checkAndSendReports, 30000);
     
     botIntervalRef.current = setInterval(() => {
         if (!activeBots['PAPER']) return;
-        
         const results = runAutoTradeEngine(settings, paperPortfolio, marketData, funds, recommendations);
-        
         results.forEach(res => {
             if (res.transaction && res.newFunds) {
-                const nextTx = [...transactions, res.transaction];
-                setTransactions(nextTx);
-                saveData('transactions', nextTx);
-                
+                const tx = res.transaction;
+                setTransactions(prev => {
+                    const next = [...prev, tx];
+                    saveData('transactions', next);
+                    return next;
+                });
                 setFunds(res.newFunds);
                 saveData('funds', res.newFunds);
-
-                if (res.transaction.type === 'BUY') {
-                    const nextPortfolio = [...paperPortfolio, { 
-                      symbol: res.transaction.symbol, 
-                      type: res.transaction.assetType, 
-                      quantity: res.transaction.quantity, 
-                      avgCost: res.transaction.price, 
-                      totalCost: res.transaction.price * res.transaction.quantity, 
-                      broker: 'PAPER' as const
-                    }];
-                    setPaperPortfolio(nextPortfolio);
-                    saveData('portfolio', nextPortfolio);
-                } else {
-                    const nextPortfolio = paperPortfolio.filter(p => p.symbol !== res.transaction!.symbol);
-                    setPaperPortfolio(nextPortfolio);
-                    saveData('portfolio', nextPortfolio);
-                }
-                showNotification(`Bot Executed: ${res.reason || 'Momentum Entry'}`);
+                setPaperPortfolio(prev => {
+                    let next: PortfolioItem[];
+                    if (tx.type === 'BUY') {
+                        const newItem: PortfolioItem = { 
+                            symbol: tx.symbol, type: tx.assetType, quantity: tx.quantity, 
+                            avgCost: tx.price, totalCost: (tx.price * tx.quantity) + (tx.brokerage || 0), 
+                            broker: tx.broker, timeframe: tx.timeframe
+                        };
+                        next = [...prev, newItem];
+                    } else {
+                        next = prev.filter(p => p.symbol !== tx.symbol);
+                    }
+                    saveData('portfolio', next);
+                    return next;
+                });
+                showNotification(`Bot Execution: ${tx.type} ${tx.symbol}`);
+                notifyTelegram(tx, res.reason);
             }
         });
-    }, 15000);
+    }, 20000); 
     
     return () => { 
         clearInterval(refreshIntervalRef.current); 
         clearInterval(botIntervalRef.current); 
         clearInterval(aiPickIntervalRef.current);
+        clearInterval(reportTimerRef.current);
     };
-  }, [loadMarketData, updateAiIntradayPicks, settings, paperPortfolio, marketData, funds, recommendations, activeBots, transactions, saveData]);
+  }, [loadMarketData, updateAiIntradayPicks, checkAndSendReports, settings, paperPortfolio, marketData, funds, recommendations, activeBots, notifyTelegram, saveData, showNotification]);
 
-  const handleBuy = async (symbol: string, quantity: number, price: number, broker: any) => {
-      const cost = quantity * price;
-      const nextPortfolio = [...paperPortfolio, { symbol, type: 'STOCK' as const, quantity, avgCost: price, totalCost: cost, broker: 'PAPER' as const }];
-      const nextFunds = { ...funds, stock: funds.stock - cost };
-      const nextTx = [...transactions, { id: Date.now().toString(), type: 'BUY' as const, symbol, assetType: 'STOCK' as const, quantity, price, timestamp: Date.now(), broker: 'PAPER' as const }];
-      
-      setPaperPortfolio(nextPortfolio);
-      setFunds(nextFunds);
-      setTransactions(nextTx);
-      
-      saveData('portfolio', nextPortfolio);
-      saveData('funds', nextFunds);
-      saveData('transactions', nextTx);
+  // Updated signatures to include broker as 4th argument, matching TradeModal expectations
+  const handleBuy = async (symbol: string, quantity: number, price: number, broker: any = 'PAPER') => {
+      if (broker !== 'PAPER') {
+          showNotification(`Live trading for ${broker} not implemented in this demo.`);
+          return;
+      }
+      const brokerage = 20;
+      const cost = (quantity * price) + brokerage;
+      const rec = recommendations.find(r => r.symbol === symbol);
+      const tx: Transaction = { id: Date.now().toString(), type: 'BUY', symbol, assetType: 'STOCK', quantity, price, timestamp: Date.now(), broker: 'PAPER', brokerage, timeframe: rec?.timeframe };
+      const newItem: PortfolioItem = { symbol, type: 'STOCK' as AssetType, quantity, avgCost: price, totalCost: cost, broker: 'PAPER' as BrokerID, timeframe: rec?.timeframe };
+      setPaperPortfolio(prev => {
+        const next = [...prev, newItem];
+        saveData('portfolio', next);
+        return next;
+      });
+      setFunds(prev => {
+        const next = { ...prev, stock: prev.stock - cost };
+        saveData('funds', next);
+        return next;
+      });
+      setTransactions(prev => {
+        const next = [...prev, tx];
+        saveData('transactions', next);
+        return next;
+      });
+      notifyTelegram(tx, "Manual Entry");
   };
 
-  const handleSell = async (symbol: string, quantity: number, price: number, broker: any) => {
-      const nextPortfolio = paperPortfolio.filter(p => p.symbol !== symbol);
-      const nextFunds = { ...funds, stock: funds.stock + (quantity * price) };
-      const nextTx = [...transactions, { id: Date.now().toString(), type: 'SELL' as const, symbol, assetType: 'STOCK' as const, quantity, price, timestamp: Date.now(), broker: 'PAPER' as const }];
-      
-      setPaperPortfolio(nextPortfolio);
-      setFunds(nextFunds);
-      setTransactions(nextTx);
-
-      saveData('portfolio', nextPortfolio);
-      saveData('funds', nextFunds);
-      saveData('transactions', nextTx);
+  // Updated signatures to include broker as 4th argument, matching TradeModal expectations
+  const handleSell = async (symbol: string, quantity: number, price: number, broker: any = 'PAPER') => {
+      if (broker !== 'PAPER') {
+          showNotification(`Live trading for ${broker} not implemented in this demo.`);
+          return;
+      }
+      const brokerage = 20;
+      const proceeds = (quantity * price) - brokerage;
+      const item = paperPortfolio.find(p => p.symbol === symbol);
+      const tx: Transaction = { id: Date.now().toString(), type: 'SELL', symbol, assetType: 'STOCK', quantity, price, timestamp: Date.now(), broker: 'PAPER', brokerage, timeframe: item?.timeframe };
+      setPaperPortfolio(prev => {
+        const next = prev.filter(p => p.symbol !== symbol);
+        saveData('portfolio', next);
+        return next;
+      });
+      setFunds(prev => {
+        const next = { ...prev, stock: prev.stock + proceeds };
+        saveData('funds', next);
+        return next;
+      });
+      setTransactions(prev => {
+        const next = [...prev, tx];
+        saveData('transactions', next);
+        return next;
+      });
+      notifyTelegram(tx, "Manual Exit");
   };
 
-  const handleUpdateRules = (rules: StrategyRules) => {
-    const next = { ...settings, strategyRules: rules };
-    setSettings(next);
-    saveData('settings', next);
-  };
+  // Added logic to initiate a sell action by opening the modal with context
+  const handleInitiateSell = useCallback((symbol: string, broker: any) => {
+    const rec = recommendations.find(r => r.symbol === symbol);
+    const mData = marketData[symbol];
+    
+    // Construct a minimal recommendation object if not in currently scanned list
+    const stockRec: StockRecommendation = rec || {
+        symbol,
+        name: symbol.split('.')[0],
+        type: 'STOCK',
+        sector: 'Holdings',
+        currentPrice: mData?.price || 0,
+        reason: 'Existing Position',
+        riskLevel: 'Medium',
+        targetPrice: (mData?.price || 0) * 1.1,
+        lotSize: 1
+    };
+    
+    setInitialBroker(broker);
+    setSelectedStock(stockRec);
+    setIsTradeModalOpen(true);
+  }, [recommendations, marketData]);
 
-  const handleUpdateFunds = (newFunds: Funds) => {
-    setFunds(newFunds);
-    saveData('funds', newFunds);
-  };
+  const paperStats = useMemo(() => {
+    const currentVal = paperPortfolio.reduce((acc, h) => acc + ((marketData[h.symbol]?.price || h.avgCost) * h.quantity), 0);
+    const totalCost = paperPortfolio.reduce((acc, h) => acc + h.totalCost, 0);
+    return { currentVal, totalCost, totalPnl: currentVal - totalCost };
+  }, [paperPortfolio, marketData]);
 
   if (showSplash) return <SplashScreen visible={true} />;
 
@@ -272,14 +337,14 @@ export default function App() {
         </div>
       )}
       <main className="flex-1 overflow-y-auto custom-scrollbar w-full max-w-lg mx-auto md:max-w-7xl md:border-x md:border-slate-800">
-        {activePage === 0 && <PageMarket recommendations={recommendations} marketData={marketData} onTrade={(s) => { setSelectedStock(s); setIsTradeModalOpen(true); }} onRefresh={() => { setRecommendations([]); loadMarketData(); }} isLoading={isLoading} enabledMarkets={settings.enabledMarkets} />}
-        {activePage === 1 && <PageStrategyLog recommendations={recommendations} marketData={marketData} rules={settings.strategyRules || DEFAULT_RULES} onUpdateRules={handleUpdateRules} aiIntradayPicks={aiIntradayPicks} />}
-        {activePage === 2 && <PagePaperTrading holdings={paperPortfolio} marketData={marketData} analysisData={analysisData} onSell={(s, b) => handleSell(s, 1, marketData[s]?.price || 0, b)} onAnalyze={handleManualAnalyze} isAnalyzing={isAnalyzing} funds={funds} activeBots={activeBots} onToggleBot={(b) => setActiveBots(p => ({...p, [b]: !p[b]}))} transactions={transactions} onUpdateFunds={handleUpdateFunds} />}
-        {activePage === 3 && <PageLivePNL title="Broker Portfolio" subtitle="Live Connected Accounts" icon={Briefcase} holdings={paperPortfolio.filter(h => h.broker !== 'PAPER')} marketData={marketData} analysisData={analysisData} onSell={(s, b) => handleSell(s, 1, marketData[s]?.price || 0, b)} brokerBalances={{}} />}
+        {activePage === 0 && <PageMarket recommendations={recommendations} marketData={marketData} onTrade={(s) => { setInitialBroker(undefined); setSelectedStock(s); setIsTradeModalOpen(true); }} onRefresh={() => { setRecommendations([]); loadMarketData(); }} isLoading={isLoading} enabledMarkets={settings.enabledMarkets} />}
+        {activePage === 1 && <PageStrategyLog recommendations={recommendations} marketData={marketData} rules={settings.strategyRules || DEFAULT_RULES} onUpdateRules={(r) => { setSettings(s => ({...s, strategyRules: r})); saveData('settings', {...settings, strategyRules: r}); }} aiIntradayPicks={aiIntradayPicks} onRefresh={() => loadMarketData()} />}
+        {activePage === 2 && <PagePaperTrading holdings={paperPortfolio} marketData={marketData} analysisData={analysisData} onSell={handleInitiateSell} onAnalyze={() => setIsAnalyzing(true)} isAnalyzing={isAnalyzing} funds={funds} activeBots={activeBots} onToggleBot={(b) => setActiveBots(p => ({...p, [b]: !p[b]}))} transactions={transactions} onUpdateFunds={(f) => { setFunds(f); saveData('funds', f); }} />}
+        {activePage === 3 && <PageLivePNL title="Broker Portfolio" subtitle="Live Connected Accounts" icon={Briefcase} holdings={paperPortfolio.filter(h => h.broker !== 'PAPER')} marketData={marketData} analysisData={analysisData} onSell={handleInitiateSell} brokerBalances={{}} />}
         {activePage === 4 && <PageConfiguration settings={settings} onSave={(s) => { setSettings(s); saveData('settings', s); showNotification("Settings Saved"); }} transactions={transactions} activeBots={activeBots} onToggleBot={(b) => setActiveBots(p => ({...p, [b]: !p[b]}))} />}
       </main>
       <BottomNav activeTab={activePage} onChange={setActivePage} />
-      {selectedStock && <TradeModal isOpen={isTradeModalOpen} onClose={() => setIsTradeModalOpen(false)} stock={selectedStock} currentPrice={marketData[selectedStock.symbol]?.price || selectedStock.currentPrice} funds={funds} holdings={paperPortfolio.filter(p => p.symbol === selectedStock.symbol)} activeBrokers={['PAPER']} onBuy={handleBuy} onSell={handleSell} />}
+      {selectedStock && <TradeModal isOpen={isTradeModalOpen} onClose={() => setIsTradeModalOpen(false)} stock={selectedStock} currentPrice={marketData[selectedStock.symbol]?.price || selectedStock.currentPrice} funds={funds} holdings={paperPortfolio.filter(p => p.symbol === selectedStock.symbol)} activeBrokers={['PAPER']} initialBroker={initialBroker} onBuy={handleBuy} onSell={handleSell} />}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 
 import { Candle, TechnicalSignals } from "../types";
 
-// --- Helpers ---
+// --- Advanced Math Helpers ---
 const getCloses = (candles: Candle[]) => candles.map(c => c.close);
 const getHighs = (candles: Candle[]) => candles.map(c => c.high);
 const getLows = (candles: Candle[]) => candles.map(c => c.low);
@@ -20,173 +20,69 @@ const calcEMA = (data: number[], period: number): number[] => {
   return emaArray;
 };
 
-const calcStdDev = (data: number[], period: number): number => {
-  if (data.length < period) return 0;
-  const slice = data.slice(-period);
-  const mean = slice.reduce((a, b) => a + b, 0) / period;
-  const variance = slice.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / period;
-  return Math.sqrt(variance);
-};
+// --- Professional Grade Indicators ---
 
-// --- Indicators ---
+export const calculateADX = (candles: Candle[], period: number = 14): number => {
+    if (candles.length < period * 2) return 20;
+    
+    let plusDM = 0, minusDM = 0, tr = 0;
+    const trs: number[] = [], plusDMs: number[] = [], minusDMs: number[] = [];
+
+    for (let i = 1; i < candles.length; i++) {
+        const upMove = candles[i].high - candles[i-1].high;
+        const downMove = candles[i-1].low - candles[i].low;
+        
+        plusDMs.push(upMove > downMove && upMove > 0 ? upMove : 0);
+        minusDMs.push(downMove > upMove && downMove > 0 ? downMove : 0);
+        trs.push(Math.max(
+            candles[i].high - candles[i].low,
+            Math.abs(candles[i].high - candles[i-1].close),
+            Math.abs(candles[i].low - candles[i-1].close)
+        ));
+    }
+
+    const smoothTR = calcSMA(trs, period);
+    const smoothPlusDM = calcSMA(plusDMs, period);
+    const smoothMinusDM = calcSMA(minusDMs, period);
+
+    const plusDI = (smoothPlusDM / smoothTR) * 100;
+    const minusDI = (smoothMinusDM / smoothTR) * 100;
+    
+    return Math.abs((plusDI - minusDI) / (plusDI + minusDI)) * 100;
+};
 
 export const calculateRSI = (candles: Candle[], period: number = 14): number => {
   if (candles.length < period + 1) return 50;
   const closes = getCloses(candles);
-  
   let gains = 0, losses = 0;
   for (let i = 1; i <= period; i++) {
     const diff = closes[i] - closes[i - 1];
     if (diff > 0) gains += diff; else losses += Math.abs(diff);
   }
-  
   let avgGain = gains / period;
   let avgLoss = losses / period;
-  
   for (let i = period + 1; i < closes.length; i++) {
     const diff = closes[i] - closes[i - 1];
-    const gain = diff > 0 ? diff : 0;
-    const loss = diff < 0 ? Math.abs(diff) : 0;
-    avgGain = (avgGain * (period - 1) + gain) / period;
-    avgLoss = (avgLoss * (period - 1) + loss) / period;
+    avgGain = (avgGain * (period - 1) + (diff > 0 ? diff : 0)) / period;
+    avgLoss = (avgLoss * (period - 1) + (diff < 0 ? Math.abs(diff) : 0)) / period;
   }
-  
-  if (avgLoss === 0) return 100;
-  const rs = avgGain / avgLoss;
-  return 100 - (100 / (1 + rs));
-};
-
-export const calculateMACD = (candles: Candle[]) => {
-  const closes = getCloses(candles);
-  if (closes.length < 26) return { macd: 0, signal: 0, histogram: 0 };
-  
-  const ema12 = calcEMA(closes, 12);
-  const ema26 = calcEMA(closes, 26);
-  
-  const macdLine: number[] = [];
-  for(let i=0; i<closes.length; i++) {
-      macdLine.push(ema12[i] - ema26[i]);
-  }
-  
-  const signalLine = calcEMA(macdLine, 9);
-  const currentMACD = macdLine[macdLine.length - 1];
-  const currentSignal = signalLine[signalLine.length - 1];
-  
-  return {
-      macd: currentMACD,
-      signal: currentSignal,
-      histogram: currentMACD - currentSignal
-  };
-};
-
-export const calculateBollinger = (candles: Candle[], period: number = 20) => {
-  const closes = getCloses(candles);
-  if (closes.length < period) return { upper: 0, middle: 0, lower: 0, percentB: 0 };
-  
-  const sma = calcSMA(closes, period);
-  const stdDev = calcStdDev(closes, period);
-  const upper = sma + (2 * stdDev);
-  const lower = sma - (2 * stdDev);
-  const current = closes[closes.length - 1];
-  
-  return {
-      upper,
-      middle: sma,
-      lower,
-      percentB: (current - lower) / (upper - lower)
-  };
-};
-
-export const calculateStochastic = (candles: Candle[], period: number = 14) => {
-  if (candles.length < period) return { k: 50, d: 50 };
-  const lows = getLows(candles);
-  const highs = getHighs(candles);
-  const closes = getCloses(candles);
-  const currentClose = closes[closes.length - 1];
-  const windowLows = lows.slice(-period);
-  const windowHighs = highs.slice(-period);
-  const lowestLow = Math.min(...windowLows);
-  const highestHigh = Math.max(...windowHighs);
-  const k = ((currentClose - lowestLow) / (highestHigh - lowestLow)) * 100;
-  return { k: k || 50, d: k || 50 }; 
+  return avgLoss === 0 ? 100 : 100 - (100 / (1 + (avgGain / avgLoss)));
 };
 
 export const calculateATR = (candles: Candle[], period: number = 14): number => {
     if (candles.length < period + 1) return 0;
-    const trValues: number[] = [];
-    for(let i = 1; i < candles.length; i++) {
-        const tr = Math.max(
-            candles[i].high - candles[i].low,
-            Math.abs(candles[i].high - candles[i-1].close),
-            Math.abs(candles[i].low - candles[i-1].close)
-        );
-        trValues.push(tr);
-    }
-    return trValues.slice(-period).reduce((a, b) => a + b, 0) / period;
+    const trs = candles.slice(1).map((c, i) => Math.max(
+        c.high - c.low,
+        Math.abs(c.high - candles[i].close),
+        Math.abs(c.low - candles[i].close)
+    ));
+    return trs.slice(-period).reduce((a, b) => a + b, 0) / period;
 };
 
-/**
- * Calculates Intraday Levels (Support / Resistance / OI Proxy)
- */
-export const calculateLevels = (candles: Candle[]) => {
-    if (candles.length < 5) return { support: 0, resistance: 0, oiStrength: 0 };
-    
-    const highs = getHighs(candles);
-    const lows = getLows(candles);
-    const lastPrice = candles[candles.length - 1].close;
-    
-    // Simple S/R based on session extremes
-    const resistance = Math.max(...highs);
-    const support = Math.min(...lows);
-    
-    // Simulate OI Profile (Open Interest proxy)
-    // Positive if Price UP + Volume UP
-    // Negative if Price DOWN + Volume UP (short build-up)
-    let oiScore = 0;
-    for (let i = 1; i < candles.length; i++) {
-        const priceChange = candles[i].close - candles[i-1].close;
-        const volChange = candles[i].volume / (candles[i-1].volume || 1);
-        if (priceChange > 0 && volChange > 1.2) oiScore += 5;
-        if (priceChange < 0 && volChange > 1.2) oiScore -= 3;
-    }
-    
-    return { 
-        support, 
-        resistance, 
-        oiStrength: Math.max(-100, Math.min(100, oiScore * 2)) 
-    };
-};
+// --- Advanced Engine Logic ---
 
-/**
- * Calculates Intraday Volume Profile Strength & VWAP Approximation
- */
-const calculateIntradayMetrics = (candles: Candle[]) => {
-    const volumes = candles.map(c => c.volume);
-    const avgVol = calcSMA(volumes, 20);
-    const currentVol = volumes[volumes.length - 1];
-    const relativeVol = currentVol / (avgVol || 1);
-    
-    // VWAP Approximation = Sum(Price * Volume) / Sum(Volume)
-    let cumulativePV = 0;
-    let cumulativeV = 0;
-    candles.slice(-20).forEach(c => {
-        const avgPrice = (c.high + c.low + c.close) / 3;
-        cumulativePV += avgPrice * c.volume;
-        cumulativeV += c.volume;
-    });
-    const vwap = cumulativeV > 0 ? cumulativePV / cumulativeV : candles[candles.length - 1].close;
-
-    // Price Velocity (Price change over last 3 candles)
-    const priceVelocity = candles.length >= 4 
-        ? ((candles[candles.length - 1].close - candles[candles.length - 4].close) / candles[candles.length - 4].close) * 100
-        : 0;
-
-    return { relativeVol, vwap, priceVelocity };
-};
-
-// --- MAIN SCORING ENGINE ---
 export const analyzeStockTechnical = (candles: Candle[]): TechnicalSignals => {
-  if (candles.length < 2) {
+  if (candles.length < 30) {
       return { 
           rsi: 50, macd: {macd:0, signal:0, histogram:0}, stoch: {k:50, d:50}, 
           adx: 0, atr: 0, bollinger: {upper:0, middle:0, lower:0, percentB:0}, 
@@ -194,75 +90,78 @@ export const analyzeStockTechnical = (candles: Candle[]): TechnicalSignals => {
       };
   }
 
-  const rsi = calculateRSI(candles);
-  const macd = calculateMACD(candles);
-  const stoch = calculateStochastic(candles);
-  const bollinger = calculateBollinger(candles);
-  const atr = calculateATR(candles);
-  const { relativeVol, vwap, priceVelocity } = calculateIntradayMetrics(candles);
-  
   const closes = getCloses(candles);
-  const currentPrice = closes[closes.length - 1];
+  const lastPrice = closes[closes.length - 1];
+  
+  // 1. Core Indicators
+  const rsi = calculateRSI(candles);
+  const adx = calculateADX(candles);
+  const atr = calculateATR(candles);
+  
+  // 2. Trend & Volume Metrics
   const ema9Series = calcEMA(closes, 9);
   const ema21Series = calcEMA(closes, 21);
   const ema9 = ema9Series[ema9Series.length - 1];
   const ema21 = ema21Series[ema21Series.length - 1];
+  
+  const volumes = candles.map(c => c.volume);
+  const avgVol = calcSMA(volumes, 20);
+  const rvol = volumes[volumes.length - 1] / (avgVol || 1);
 
-  const obvSeries: number[] = [0];
-  for(let i=1; i<candles.length; i++) {
-      let currentOBV = obvSeries[i-1];
-      if (candles[i].close > candles[i-1].close) currentOBV += candles[i].volume;
-      else if (candles[i].close < candles[i-1].close) currentOBV -= candles[i].volume;
-      obvSeries.push(currentOBV);
-  }
-  const currentOBV = obvSeries[obvSeries.length - 1];
-  const obvSMA = calcSMA(obvSeries, 10);
+  // 3. VWAP Approximation
+  let cumulativePV = 0, cumulativeV = 0;
+  candles.slice(-20).forEach(c => {
+      cumulativePV += ((c.high + c.low + c.close) / 3) * c.volume;
+      cumulativeV += c.volume;
+  });
+  const vwap = cumulativeV > 0 ? cumulativePV / cumulativeV : lastPrice;
 
+  // 4. Scoring Engine (Strategy-First)
   const activeSignals: string[] = [];
   let score = 0;
 
-  // INTRADAY PRIORITY 1: VWAP & Price Velocity
-  if (currentPrice > vwap) {
+  // A. The Anchor: VWAP Logic
+  if (lastPrice > vwap) {
       score += 25;
-      activeSignals.push("Above VWAP");
-  }
-  if (priceVelocity > 0.5) {
-      score += 20;
-      activeSignals.push("High Velocity");
+      activeSignals.push("Price Anchor (VWAP+)");
   }
 
-  // INTRADAY PRIORITY 2: Relative Volume (Proxy for institutional interest/OI build-up)
-  if (relativeVol > 2) {
+  // B. The Fuel: Institutional RVOL Logic
+  if (rvol > 2.5) {
       score += 35;
-      activeSignals.push("Institutional Burst");
-  } else if (relativeVol > 1.2) {
+      activeSignals.push("Institutional Pulse (RVOL 2.5+)");
+  } else if (rvol > 1.5) {
       score += 15;
-      activeSignals.push("Volume Support");
+      activeSignals.push("Volume Expansion");
   }
 
-  // STANDARD MOMENTUM
-  if (rsi < 35) { score += 20; activeSignals.push(`Oversold RSI`); }
-  else if (rsi > 70) { score -= 15; activeSignals.push("Overbought RSI"); }
-
-  if (macd.histogram > 0 && macd.macd > macd.signal) {
+  // C. The Trend: ADX Strength
+  if (adx > 25) {
       score += 20;
-      activeSignals.push("MACD Bullish");
+      activeSignals.push("Strong Trend (ADX)");
+      if (ema9 > ema21) score += 10;
   }
 
-  if (ema9 > ema21) {
+  // D. Momentum: RSI Crossover
+  if (rsi > 55 && rsi < 75) {
       score += 15;
-      activeSignals.push("Trend Align");
+      activeSignals.push("Bullish Momentum");
+  } else if (rsi < 30) {
+      score += 20; // Oversold Mean Reversion
+      activeSignals.push("Mean Reversion (Oversold)");
   }
 
-  if (currentOBV > obvSMA) {
-      score += 10;
-      activeSignals.push("Accumulation");
-  }
+  let strength: 'STRONG BUY' | 'BUY' | 'HOLD' | 'SELL' = 'HOLD';
+  const finalScore = Math.min(100, score);
+  
+  if (finalScore >= 80) strength = 'STRONG BUY';
+  else if (finalScore >= 60) strength = 'BUY';
+  else if (finalScore <= 30) strength = 'SELL';
 
-  let signalStrength: 'STRONG BUY' | 'BUY' | 'HOLD' | 'SELL' = 'HOLD';
-  if (score >= 85) signalStrength = 'STRONG BUY';
-  else if (score >= 60) signalStrength = 'BUY';
-  else if (score <= 20) signalStrength = 'SELL';
-
-  return { rsi, macd, stoch, adx: 30, atr, bollinger, ema: {ema9, ema21}, obv: currentOBV, score: Math.min(100, score), activeSignals, signalStrength };
+  return { 
+      rsi, adx, atr, score: finalScore, activeSignals, signalStrength: strength,
+      macd: {macd:0, signal:0, histogram:0}, stoch: {k:50, d:50},
+      bollinger: {upper:0, middle:0, lower:0, percentB:0},
+      ema: {ema9, ema21}, obv: 0
+  };
 };

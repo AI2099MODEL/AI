@@ -1,5 +1,5 @@
+
 import { AppSettings, MarketData, PortfolioItem, StockRecommendation, Transaction, Funds } from "../types";
-import { getMarketStatus } from "./marketStatusService";
 
 export interface TradeResult {
     executed: boolean;
@@ -9,7 +9,14 @@ export interface TradeResult {
     reason?: string;
 }
 
-const MAX_GLOBAL_POSITIONS = 5; 
+const MAX_GLOBAL_POSITIONS = 10; 
+const FLAT_BROKERAGE = 20; 
+
+const getISTTime = () => {
+    const now = new Date();
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    return new Date(utc + (5.5 * 60 * 60 * 1000));
+};
 
 export const runAutoTradeEngine = (
     settings: AppSettings, 
@@ -24,74 +31,116 @@ export const runAutoTradeEngine = (
     const results: TradeResult[] = [];
     let currentFunds = { ...funds };
     const paperPortfolio = portfolio.filter(p => p.broker === 'PAPER');
+    
+    const ist = getISTTime();
+    const day = ist.getDay();
+    const currentMinutes = ist.getHours() * 60 + ist.getMinutes();
+    
+    if (day === 0 || day === 6) return []; // Weekends Off
 
-    // 1. MANAGE EXITS
+    const marketOpen = 9 * 60 + 15;
+    const marketClose = 15 * 60 + 30;
+    const squareOffTime = 15 * 60 + 20;
+    const entryDeadline = 15 * 60 + 0;
+
+    const isMarketOpen = currentMinutes >= marketOpen && currentMinutes < marketClose;
+    const isSquareOff = currentMinutes >= squareOffTime;
+
+    // 1. SMART EXIT & TRAILING LOGIC
     paperPortfolio.forEach(item => {
-        const status = getMarketStatus('STOCK');
-        if (!status.isOpen) return; 
-
         const data = marketData[item.symbol];
-        if (!data) return;
+        if (!data || !isMarketOpen) return;
 
-        const pnl = ((data.price - item.avgCost) / item.avgCost) * 100;
+        const currentPnlPercent = ((data.price - item.avgCost) / item.avgCost) * 100;
+        const atr = data.technicals.atr || (data.price * 0.015);
         
         let shouldExit = false;
         let exitReason = "";
 
-        if (pnl <= -3.0) { shouldExit = true; exitReason = "Stop Loss Hit"; }
-        else if (pnl >= 8.0) { shouldExit = true; exitReason = "Target Hit"; }
-        else if (data.technicals.score < 25) { shouldExit = true; exitReason = "Technical Breakdown"; }
-        
+        // Strategy 1: ATR-Based Dynamic Stop Loss (1.5x ATR)
+        const stopPrice = item.avgCost - (atr * 1.5);
+        if (data.price < stopPrice) {
+            shouldExit = true;
+            exitReason = "Volatility Stop (1.5x ATR) Hit";
+        }
+        // Strategy 2: Profit Trailing (If profit > 3%, set trailing SL at 1.5%)
+        else if (currentPnlPercent > 5.0 && data.technicals.score < 50) {
+            shouldExit = true;
+            exitReason = "Momentum Fade - Profit Locked";
+        }
+        // Strategy 3: Hard Target
+        else if (currentPnlPercent >= 10.0) {
+            shouldExit = true;
+            exitReason = "High Conviction Target Hit";
+        }
+        // Strategy 4: EOD Square Off for Intraday
+        else if (item.timeframe === 'INTRADAY' && isSquareOff) {
+            shouldExit = true;
+            exitReason = "EOD Intraday Square Off";
+        }
+
         if (shouldExit) {
-            currentFunds.stock += (data.price * item.quantity); 
+            const proceeds = (data.price * item.quantity) - FLAT_BROKERAGE;
+            currentFunds.stock += proceeds; 
             results.push({
                 executed: true,
                 transaction: {
-                    id: `bot-sell-${Date.now()}`,
+                    id: `bot-sell-${Date.now()}-${item.symbol}`,
                     type: 'SELL', symbol: item.symbol, assetType: 'STOCK',
-                    quantity: item.quantity, price: data.price, timestamp: Date.now(), broker: 'PAPER'
+                    quantity: item.quantity, price: data.price, timestamp: Date.now(), 
+                    broker: 'PAPER', brokerage: FLAT_BROKERAGE, timeframe: item.timeframe
                 },
-                newFunds: { ...currentFunds }, reason: exitReason
+                newFunds: { ...currentFunds }, 
+                reason: exitReason
             });
         }
     });
 
-    // 2. ENTRY LOGIC
+    // 2. HIGH-CONVICTION ENTRY LOGIC
+    if (!isMarketOpen || currentMinutes >= entryDeadline) return results;
     if (paperPortfolio.length >= MAX_GLOBAL_POSITIONS) return results;
 
-    const candidates = recommendations
+    const topCandidates = recommendations
         .filter(r => {
             const data = marketData[r.symbol];
-            const score = data?.technicals.score || 0;
-            const marketStatus = getMarketStatus('STOCK');
-            return score >= 60 && marketStatus.isOpen && !paperPortfolio.find(p => p.symbol === r.symbol);
+            if (!data) return false;
+            
+            const isAlreadyHeld = paperPortfolio.some(p => p.symbol === r.symbol);
+            const signals = data.technicals.activeSignals;
+            
+            // WORLD CLASS FILTER: Must have institutional volume + VWAP support
+            const hasInstitutions = signals.some(s => s.includes("Institutional"));
+            const hasVWAP = signals.some(s => s.includes("VWAP"));
+            const isStrong = data.technicals.score >= 80;
+
+            return isStrong && hasInstitutions && hasVWAP && !isAlreadyHeld;
         })
         .sort((a, b) => (marketData[b.symbol]?.technicals.score || 0) - (marketData[a.symbol]?.technicals.score || 0));
 
-    for (const rec of candidates) {
+    for (const rec of topCandidates) {
         if (results.some(r => r.transaction?.type === 'BUY')) break;
 
-        const data = marketData[rec.symbol];
-        if (!data) continue;
+        const data = marketData[rec.symbol]!;
+        const allocation = (settings.autoTradeConfig?.value || 5) / 100;
+        const budget = currentFunds.stock * allocation;
+        const qty = Math.floor(budget / data.price);
 
-        const available = currentFunds.stock;
-        const allocationFactor = 0.20; // 20% of funds
-        const tradeValue = available * allocationFactor;
-        const qty = Math.floor(tradeValue / data.price);
+        const cost = (qty * data.price) + FLAT_BROKERAGE;
 
-        if (qty > 0 && available >= (qty * data.price)) {
-            currentFunds.stock -= (qty * data.price);
+        if (qty > 0 && currentFunds.stock >= cost) {
+            currentFunds.stock -= cost;
             results.push({
                 executed: true,
                 transaction: {
-                    id: `bot-buy-${Date.now()}`,
+                    id: `bot-buy-${Date.now()}-${rec.symbol}`,
                     type: 'BUY', symbol: rec.symbol, assetType: 'STOCK',
-                    quantity: qty, price: data.price, timestamp: Date.now(), broker: 'PAPER'
+                    quantity: qty, price: data.price, timestamp: Date.now(), 
+                    broker: 'PAPER', brokerage: FLAT_BROKERAGE, timeframe: rec.timeframe || 'INTRADAY'
                 },
                 newFunds: { ...currentFunds }, 
-                reason: "AI Technical Crossover"
+                reason: `Smart Entry: ${data.technicals.activeSignals.join(' + ')}`
             });
-            break;
+            break; 
         }
     }
 

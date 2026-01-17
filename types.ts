@@ -61,6 +61,7 @@ export interface PortfolioItem {
   avgCost: number;
   totalCost: number;
   broker: BrokerID;
+  timeframe?: 'INTRADAY' | 'BTST' | 'WEEKLY' | 'MONTHLY';
   targets?: {
       t1: number; 
       t2: number; 
@@ -77,6 +78,8 @@ export interface Transaction {
   price: number;
   timestamp: number;
   broker: BrokerID;
+  brokerage?: number;
+  timeframe?: 'INTRADAY' | 'BTST' | 'WEEKLY' | 'MONTHLY';
 }
 
 export interface Candle {
