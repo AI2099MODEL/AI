@@ -13,6 +13,7 @@ import { PagePaperTrading } from './components/PagePaperTrading';
 import { PageLivePNL } from './components/PageLivePNL';
 import { PageConfiguration } from './components/PageConfiguration';
 import { PageStrategyLog } from './components/PageStrategyLog';
+import { PageScan } from './components/PageScan';
 import { sendTelegramMessage, generatePNLReport } from './services/telegramService';
 
 const STORAGE_PREFIX = 'aitrade_v3_';
@@ -265,6 +266,12 @@ export default function App() {
     setIsTradeModalOpen(true);
   }, [recommendations, marketData]);
 
+  const onTradeRequest = useCallback((s: StockRecommendation) => {
+    setInitialBroker(undefined);
+    setSelectedStock(s);
+    setIsTradeModalOpen(true);
+  }, []);
+
   if (showSplash) return <SplashScreen visible={true} />;
 
   return (
@@ -285,11 +292,12 @@ export default function App() {
         </div>
       )}
       <main className="flex-1 overflow-y-auto custom-scrollbar w-full max-w-lg mx-auto md:max-w-7xl md:border-x md:border-slate-800">
-        {activePage === 0 && <PageMarket recommendations={recommendations} marketData={marketData} onTrade={(s) => { setInitialBroker(undefined); setSelectedStock(s); setIsTradeModalOpen(true); }} onRefresh={() => { setRecommendations([]); loadMarketData(); }} isLoading={isLoading} enabledMarkets={settings.enabledMarkets} />}
-        {activePage === 1 && <PageStrategyLog recommendations={recommendations} marketData={marketData} rules={settings.strategyRules || DEFAULT_RULES} onUpdateRules={(r) => { setSettings(s => ({...s, strategyRules: r})); saveData('settings', {...settings, strategyRules: r}); }} aiIntradayPicks={aiIntradayPicks} onRefresh={() => loadMarketData()} />}
-        {activePage === 2 && <PagePaperTrading holdings={paperPortfolio} marketData={marketData} analysisData={analysisData} onSell={handleInitiateSell} onAnalyze={() => setIsAnalyzing(true)} isAnalyzing={isAnalyzing} funds={funds} activeBots={activeBots} onToggleBot={(b) => setActiveBots(p => ({...p, [b]: !p[b]}))} transactions={transactions} onUpdateFunds={(f) => { setFunds(f); saveData('funds', f); }} />}
-        {activePage === 3 && <PageLivePNL title="Broker Portfolio" subtitle="Live Connected Accounts" icon={Briefcase} holdings={paperPortfolio.filter(h => h.broker !== 'PAPER')} marketData={marketData} analysisData={analysisData} onSell={handleInitiateSell} brokerBalances={{}} />}
-        {activePage === 4 && <PageConfiguration settings={settings} onSave={(s) => { setSettings(s); saveData('settings', s); showNotification("Settings Saved"); }} transactions={transactions} activeBots={activeBots} onToggleBot={(b) => setActiveBots(p => ({...p, [b]: !p[b]}))} onTestTrade={handleTestTrade} />}
+        {activePage === 0 && <PageMarket recommendations={recommendations} marketData={marketData} onTrade={onTradeRequest} onRefresh={() => { setRecommendations([]); loadMarketData(); }} isLoading={isLoading} enabledMarkets={settings.enabledMarkets} />}
+        {activePage === 1 && <PageStrategyLog recommendations={recommendations} marketData={marketData} rules={settings.strategyRules || DEFAULT_RULES} onUpdateRules={(r) => { setSettings(s => ({...s, strategyRules: r})); saveData('settings', {...settings, strategyRules: r}); }} aiIntradayPicks={aiIntradayPicks} onRefresh={() => loadMarketData()} settings={settings} />}
+        {activePage === 2 && <PageScan marketData={marketData} settings={settings} onTrade={onTradeRequest} />}
+        {activePage === 3 && <PagePaperTrading holdings={paperPortfolio} marketData={marketData} analysisData={analysisData} onSell={handleInitiateSell} onAnalyze={() => setIsAnalyzing(true)} isAnalyzing={isAnalyzing} funds={funds} activeBots={activeBots} onToggleBot={(b) => setActiveBots(p => ({...p, [b]: !p[b]}))} transactions={transactions} onUpdateFunds={(f) => { setFunds(f); saveData('funds', f); }} />}
+        {activePage === 4 && <PageLivePNL title="Broker Portfolio" subtitle="Live Connected Accounts" icon={Briefcase} holdings={paperPortfolio.filter(h => h.broker !== 'PAPER')} marketData={marketData} analysisData={analysisData} onSell={handleInitiateSell} brokerBalances={{}} />}
+        {activePage === 5 && <PageConfiguration settings={settings} onSave={(s) => { setSettings(s); saveData('settings', s); showNotification("Settings Saved"); }} transactions={transactions} activeBots={activeBots} onToggleBot={(b) => setActiveBots(p => ({...p, [b]: !p[b]}))} onTestTrade={handleTestTrade} />}
       </main>
       <BottomNav activeTab={activePage} onChange={setActivePage} />
       {selectedStock && <TradeModal isOpen={isTradeModalOpen} onClose={() => setIsTradeModalOpen(false)} stock={selectedStock} currentPrice={marketData[selectedStock.symbol]?.price || selectedStock.currentPrice} funds={funds} holdings={paperPortfolio.filter(p => p.symbol === selectedStock.symbol)} activeBrokers={['PAPER']} initialBroker={initialBroker} onBuy={handleBuy} onSell={handleSell} />}

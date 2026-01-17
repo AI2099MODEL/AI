@@ -26,6 +26,24 @@ export interface StrategyRules {
   maxTradesPerDay: number;
 }
 
+export interface CustomScanParameters {
+  minRsi?: number;
+  maxRsi?: number;
+  minAdx?: number;
+  minRvol?: number;
+  priceAboveEma9?: boolean;
+  priceAboveEma21?: boolean;
+  emaCrossover?: boolean;
+  bbSqueeze?: boolean;
+  bbBreakout?: boolean;
+  priceAboveSupertrend?: boolean;
+  macdPositive?: boolean;
+  volumeSpike?: boolean;
+  stochOversold?: boolean;
+  stochOverbought?: boolean;
+  adxStrongTrend?: boolean;
+}
+
 export interface StockRecommendation {
   symbol: string;
   name: string;
@@ -41,6 +59,27 @@ export interface StockRecommendation {
   isTopPick?: boolean;
   sourceUrl?: string;
   score?: number;
+}
+
+export interface BacktestTrade {
+  symbol: string;
+  entryTime: number;
+  exitTime: number;
+  entryPrice: number;
+  exitPrice: number;
+  quantity: number;
+  pnl: number;
+  pnlPercent: number;
+  exitReason: string;
+}
+
+export interface BacktestResult {
+  totalPnl: number;
+  winRate: number;
+  totalTrades: number;
+  maxDrawdown: number;
+  trades: BacktestTrade[];
+  equityCurve: { time: string; value: number }[];
 }
 
 export interface HoldingAnalysis {
@@ -100,10 +139,12 @@ export interface TechnicalSignals {
   bollinger: { upper: number; middle: number; lower: number; percentB: number };
   bitValue?: number;
   ema: { ema9: number; ema21: number };
+  supertrend: { value: number; trend: 'BUY' | 'SELL' };
   obv: number;
   score: number;
   activeSignals: string[];
   signalStrength: 'STRONG BUY' | 'BUY' | 'HOLD' | 'SELL';
+  rvol: number;
 }
 
 export interface StockData {

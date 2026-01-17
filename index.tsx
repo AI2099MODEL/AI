@@ -14,19 +14,20 @@ interface ErrorBoundaryState {
 
 /**
  * ErrorBoundary class component to catch rendering errors.
- * Fixed: Explicitly extending Component to ensure properties like 
- * setState, state, and props are correctly inherited and recognized 
- * by the TypeScript compiler in this specific environment.
+ * Fixed: Explicitly declare state and extend Component directly to ensure property visibility for the TypeScript compiler.
  */
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  // Explicitly declaring state to ensure it is recognized by TypeScript
+  public state: ErrorBoundaryState = {
+    hasError: false,
+    error: null,
+    errorInfo: null
+  };
+
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    // Fixed: Initializing state in constructor using correctly inherited Component properties
-    this.state = {
-      hasError: false,
-      error: null,
-      errorInfo: null
-    };
+    // State is already initialized above, but we can also set it here if needed.
+    // However, super(props) ensures this.props is correctly initialized.
   }
 
   static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
@@ -35,12 +36,12 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("App Crash Details:", error, errorInfo);
-    // Fixed: setState is correctly inherited from Component
+    // setState is inherited from Component
     this.setState({ errorInfo });
   }
 
   render() {
-    // Fixed: state is correctly accessed via inherited Component properties
+    // Accessing state and props inherited from Component
     if (this.state.hasError) {
       return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-[#0f172a] text-white p-6 font-mono text-center">
@@ -60,7 +61,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       );
     }
 
-    // Fixed: props are correctly inherited from Component
+    // Returning children from props
     return this.props.children;
   }
 }

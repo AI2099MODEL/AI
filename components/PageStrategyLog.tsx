@@ -1,9 +1,11 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Cpu, Zap, Activity, List, Search, RefreshCw, Layers, ShieldAlert, Sparkles, Sliders, ChevronRight, Check } from 'lucide-react';
-import { StrategyRules, StockRecommendation, MarketData } from '../types';
-import { getEngineUniverse, getGroupedUniverse } from '../services/stockListService';
+import { Cpu, Zap, Activity, List, Search, RefreshCw, Layers, ShieldAlert, Sparkles, Sliders, ChevronRight, Check, Play, BarChart, History, TrendingUp, AlertCircle, Loader2 } from 'lucide-react';
+import { StrategyRules, StockRecommendation, MarketData, BacktestResult, AppSettings } from '../types';
+import { getEngineUniverse, getGroupedUniverse, getIdeasWatchlist } from '../services/stockListService';
 import { getMarketStatus } from '../services/marketStatusService';
+import { runBacktest } from '../services/backtestEngine';
+import { PortfolioChart } from './PortfolioChart';
 
 interface PageStrategyLogProps {
   recommendations: StockRecommendation[];
@@ -12,6 +14,7 @@ interface PageStrategyLogProps {
   onUpdateRules: (rules: StrategyRules) => void;
   aiIntradayPicks: string[];
   onRefresh?: () => void;
+  settings: AppSettings;
 }
 
 interface LogEntry {
@@ -22,23 +25,43 @@ interface LogEntry {
   symbol?: string;
 }
 
-export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendations, marketData, rules, onUpdateRules, aiIntradayPicks, onRefresh }) => {
+export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendations, marketData, rules, onUpdateRules, aiIntradayPicks, onRefresh, settings }) => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [activeTab, setActiveTab] = useState<'LOGS' | 'QUANT' | 'TUNING'>('QUANT');
+  const [activeTab, setActiveTab] = useState<'LOGS' | 'QUANT' | 'TUNING' | 'BACKTEST'>('QUANT');
   const [engineUniverse, setEngineUniverse] = useState<string[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
   const [localRules, setLocalRules] = useState<StrategyRules>(rules);
   const logEndRef = useRef<HTMLDivElement>(null);
 
-  const groupedUniverse = useMemo(() => getGroupedUniverse(), []);
-  const industries = useMemo(() => Object.keys(groupedUniverse).sort(), [groupedUniverse]);
+  // Backtest State
+  const [isBacktesting, setIsBacktesting] = useState(false);
+  const [backtestProgress, setBacktestProgress] = useState(0);
+  const [btResult, setBtResult] = useState<BacktestResult | null>(null);
+  const [btRange, setBtRange] = useState('5d');
 
+  const groupedUniverse = useMemo(() => getGroupedUniverse(), []);
+  
   const quantPicks = useMemo(() => {
     return recommendations
         .filter(r => (r.score || 0) >= 70)
         .sort((a,b) => (b.score || 0) - (a.score || 0))
         .slice(0, 15);
   }, [recommendations]);
+
+  const handleStartBacktest = async () => {
+      setIsBacktesting(true);
+      setBacktestProgress(0);
+      setBtResult(null);
+      
+      const symbols = getIdeasWatchlist().slice(0, 10); // Run on first 10 for performance
+      try {
+          const result = await runBacktest(symbols, localRules, settings, "15m", btRange, (p) => setBacktestProgress(p));
+          setBtResult(result);
+      } catch (e) {
+          console.error("Backtest failed", e);
+      } finally {
+          setIsBacktesting(false);
+      }
+  };
 
   useEffect(() => {
     setEngineUniverse(getEngineUniverse());
@@ -96,6 +119,7 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
          {[
            { id: 'QUANT', label: 'Market Pulse', icon: <Layers size={14}/> },
            { id: 'LOGS', label: 'Live Stream', icon: <Activity size={14}/> },
+           { id: 'BACKTEST', label: 'Backtest', icon: <History size={14}/> },
            { id: 'TUNING', label: 'Tuning', icon: <Sliders size={14}/> }
          ].map(t => (
            <button 
@@ -173,6 +197,116 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
             </div>
         )}
 
+        {activeTab === 'BACKTEST' && (
+            <div className="space-y-4 animate-slide-up h-full overflow-y-auto custom-scrollbar pr-2 pb-10">
+                <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
+                    <div className="flex justify-between items-center mb-6">
+                        <div>
+                            <h3 className="text-sm font-black text-white uppercase italic tracking-tighter">Strategy Backtester</h3>
+                            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-1">Simulate IntraBot on historical data</p>
+                        </div>
+                        <div className="flex gap-2">
+                             <select 
+                               value={btRange} 
+                               onChange={(e) => setBtRange(e.target.value)}
+                               className="bg-slate-950 border border-slate-800 text-[10px] font-black text-white rounded-lg px-2 py-1 outline-none"
+                             >
+                                <option value="5d">Last 5 Days (15m)</option>
+                                <option value="1mo">Last 1 Month (1h)</option>
+                             </select>
+                             <button 
+                                onClick={handleStartBacktest}
+                                disabled={isBacktesting}
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 flex items-center gap-2 disabled:opacity-50"
+                             >
+                                {isBacktesting ? <Loader2 size={14} className="animate-spin"/> : <Play size={14} fill="currentColor"/>}
+                                {isBacktesting ? `Simulating (${backtestProgress}%)` : 'Run Backtest'}
+                             </button>
+                        </div>
+                    </div>
+
+                    {!btResult && !isBacktesting && (
+                        <div className="py-12 flex flex-col items-center justify-center border border-dashed border-slate-800 rounded-2xl bg-slate-900/20 text-slate-600">
+                            <History size={48} className="mb-3 opacity-20"/>
+                            <p className="text-[10px] font-black uppercase tracking-widest">Select range and run simulation</p>
+                        </div>
+                    )}
+
+                    {btResult && (
+                        <div className="space-y-6 animate-fade-in">
+                            {/* Stats Grid */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Total Net P&L</p>
+                                    <div className={`text-lg font-mono font-bold ${btResult.totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                        ₹{btResult.totalPnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                    </div>
+                                </div>
+                                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Win Rate</p>
+                                    <div className="text-lg font-mono font-bold text-blue-400">{btResult.winRate.toFixed(1)}%</div>
+                                </div>
+                                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Total Trades</p>
+                                    <div className="text-lg font-mono font-bold text-white">{btResult.totalTrades}</div>
+                                </div>
+                                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Max Drawdown</p>
+                                    <div className="text-lg font-mono font-bold text-red-400">{btResult.maxDrawdown.toFixed(1)}%</div>
+                                </div>
+                            </div>
+
+                            {/* Equity Curve */}
+                            <div>
+                                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                    <TrendingUp size={12}/> Performance Curve
+                                </h4>
+                                <PortfolioChart data={btResult.equityCurve} baseline={100000} />
+                            </div>
+
+                            {/* Trade History */}
+                            <div>
+                                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                    <List size={12}/> Trade History
+                                </h4>
+                                <div className="bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
+                                    <table className="w-full text-left text-[9px] font-mono">
+                                        <thead className="bg-slate-900 text-slate-500 font-black uppercase tracking-widest">
+                                            <tr>
+                                                <th className="p-3">Asset</th>
+                                                <th className="p-3">Exit Time</th>
+                                                <th className="p-3 text-right">Return</th>
+                                                <th className="p-3 text-right">P&L</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-800/50">
+                                            {btResult.trades.slice(0, 20).map((t, idx) => (
+                                                <tr key={idx} className="hover:bg-white/5">
+                                                    <td className="p-3 font-bold text-white uppercase">{t.symbol.split('.')[0]}</td>
+                                                    <td className="p-3 text-slate-500">{new Date(t.exitTime).toLocaleDateString()}</td>
+                                                    <td className={`p-3 text-right font-bold ${t.pnlPercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {t.pnlPercent.toFixed(1)}%
+                                                    </td>
+                                                    <td className={`p-3 text-right font-bold ${t.pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                                        ₹{t.pnl.toFixed(0)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                    {btResult.trades.length > 20 && (
+                                        <div className="p-3 text-center text-[8px] text-slate-600 uppercase font-black">
+                                            Showing last 20 of {btResult.trades.length} trades
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        )}
+
         {activeTab === 'TUNING' && (
             <div className="space-y-4 animate-slide-up h-full overflow-y-auto custom-scrollbar pr-2">
                 <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 space-y-6">
@@ -188,7 +322,6 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
 
                     <div className="space-y-4">
                         <div className="flex items-center justify-between p-3 bg-slate-900 rounded-xl border border-slate-800">
-                            {/* FIXED: Using &gt; instead of > to resolve JSX character parsing error */}
                             <label className="text-xs text-slate-400 font-bold uppercase tracking-wider">Price &gt; VWAP Filter</label>
                             <button 
                               onClick={() => setLocalRules({...localRules, vwapConfirm: !localRules.vwapConfirm})}

@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { TrendingUp, Bot, Briefcase, Settings, Cpu } from 'lucide-react';
+import { TrendingUp, Bot, Briefcase, Settings, Cpu, Filter } from 'lucide-react';
 
 interface BottomNavProps {
   activeTab: number;
@@ -10,9 +11,10 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onChange }) => 
   const tabs = [
     { id: 0, label: 'Ideas', icon: TrendingUp },
     { id: 1, label: 'Intrabot', icon: Cpu },
-    { id: 2, label: 'Paper', icon: Bot },
-    { id: 3, label: 'Live', icon: Briefcase },
-    { id: 4, label: 'Config', icon: Settings },
+    { id: 2, label: 'Scan', icon: Filter },
+    { id: 3, label: 'Paper', icon: Bot },
+    { id: 4, label: 'Live', icon: Briefcase },
+    { id: 5, label: 'Config', icon: Settings },
   ];
 
   return (
