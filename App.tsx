@@ -6,7 +6,7 @@ import { runTechnicalScan, runIntradayAiAnalysis } from './services/recommendati
 import { StockRecommendation, PortfolioItem, MarketData, Transaction, AppSettings, UserProfile, Funds, HoldingAnalysis, StrategyRules, AssetType, BrokerID } from './types';
 import { TradeModal } from './components/TradeModal';
 import { runAutoTradeEngine } from './services/autoTradeEngine';
-import { BarChart3, Briefcase, RefreshCw, Sparkles } from 'lucide-react';
+import { BarChart3, Briefcase, RefreshCw, Sparkles, Clock } from 'lucide-react';
 import { BottomNav } from './components/BottomNav';
 import { PageMarket } from './components/PageMarket';
 import { PagePaperTrading } from './components/PagePaperTrading';
@@ -15,6 +15,7 @@ import { PageConfiguration } from './components/PageConfiguration';
 import { PageStrategyLog } from './components/PageStrategyLog';
 import { PageScan } from './components/PageScan';
 import { sendTelegramMessage, generatePNLReport } from './services/telegramService';
+import { getMarketStatus } from './services/marketStatusService';
 
 const STORAGE_PREFIX = 'aitrade_v3_';
 const DEFAULT_FUNDS: Funds = { stock: 1000000, mcx: 0, forex: 0, crypto: 0 };
@@ -69,6 +70,7 @@ export default function App() {
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
   const [selectedStock, setSelectedStock] = useState<StockRecommendation | null>(null);
   const [initialBroker, setInitialBroker] = useState<any>(undefined);
+  const [marketStatus, setMarketStatus] = useState(getMarketStatus('STOCK'));
   
   const refreshIntervalRef = useRef<any>(null);
   const botIntervalRef = useRef<any>(null);
@@ -82,8 +84,14 @@ export default function App() {
     };
     window.addEventListener('sw-update-available', handleUpdate);
 
+    // Update market status every 30 seconds
+    const statusTimer = setInterval(() => {
+        setMarketStatus(getMarketStatus('STOCK'));
+    }, 30000);
+
     return () => {
       clearTimeout(splashTimer);
+      clearInterval(statusTimer);
       window.removeEventListener('sw-update-available', handleUpdate);
     };
   }, []);
@@ -196,6 +204,11 @@ export default function App() {
     
     botIntervalRef.current = setInterval(() => {
         if (!activeBots['PAPER']) return;
+        
+        // Guard: Disable auto-trading if market is closed
+        const currentStatus = getMarketStatus('STOCK');
+        if (!currentStatus.isOpen) return;
+
         const results = runAutoTradeEngine(settings, paperPortfolio, marketData, funds, recommendations);
         results.forEach(res => {
             if (res.transaction && res.newFunds) {
@@ -275,7 +288,17 @@ export default function App() {
   if (showSplash) return <SplashScreen visible={true} />;
 
   return (
-    <div className="h-full flex flex-col bg-background text-slate-100 overflow-hidden">
+    <div className="h-full flex flex-col bg-background text-slate-100 overflow-hidden relative">
+      {/* Global Market Status Indicator */}
+      <div className="fixed top-4 right-4 z-[70] pointer-events-none">
+          <div className="bg-slate-950/90 border border-slate-800 px-3 py-1.5 rounded-full flex items-center gap-2 shadow-2xl backdrop-blur-md">
+              <div className={`w-1.5 h-1.5 rounded-full ${marketStatus.isOpen ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+              <span className={`text-[9px] font-black tracking-widest ${marketStatus.isOpen ? 'text-green-400' : 'text-red-400 uppercase'}`}>
+                  NSE {marketStatus.isOpen ? 'OPEN' : 'CLOSED'}
+              </span>
+          </div>
+      </div>
+
       {updateAvailable && (
         <div className="fixed top-0 left-0 right-0 z-[100] bg-blue-600 p-3 flex items-center justify-between shadow-2xl animate-fade-in">
            <div className="flex items-center gap-3">

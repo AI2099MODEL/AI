@@ -14,9 +14,9 @@ interface ErrorBoundaryState {
 
 /**
  * ErrorBoundary class component to catch rendering errors.
- * Fixed: Explicitly declare state and extend Component directly to ensure property visibility for the TypeScript compiler.
+ * Fixed: Using React.Component explicitly to resolve TypeScript errors where setState and props were not found.
  */
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   // Explicitly declaring state to ensure it is recognized by TypeScript
   public state: ErrorBoundaryState = {
     hasError: false,
@@ -26,8 +26,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    // State is already initialized above, but we can also set it here if needed.
-    // However, super(props) ensures this.props is correctly initialized.
+    // State is already initialized above, but super(props) ensures this.props is correctly initialized.
   }
 
   static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
@@ -36,7 +35,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("App Crash Details:", error, errorInfo);
-    // setState is inherited from Component
+    // Fixed: setState is inherited from React.Component.
     this.setState({ errorInfo });
   }
 
@@ -61,7 +60,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       );
     }
 
-    // Returning children from props
+    // Fixed: Returning children from this.props which is inherited from React.Component.
     return this.props.children;
   }
 }
