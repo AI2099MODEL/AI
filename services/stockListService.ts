@@ -49,7 +49,16 @@ export const saveIdeasWatchlist = (list: string[]) => {
 
 export const getEngineUniverse = (): string[] => {
     const saved = localStorage.getItem(STORAGE_KEY_ENGINE);
-    return saved ? JSON.parse(saved) : FULL_LIST_ARRAY;
+    const universe = saved ? JSON.parse(saved) : FULL_LIST_ARRAY;
+    
+    // Always include Banks and BSE stocks in Engine Universe by default
+    const banks = FULL_LIST_ARRAY.filter(sym => INDUSTRY_MAP[sym.split('.')[0]] === 'Banking');
+    const bseKeyStocks = FULL_LIST_ARRAY.filter(sym => sym.split('.')[0] === 'BSE');
+    
+    const forcedStocks = Array.from(new Set([...banks, ...bseKeyStocks]));
+    const finalUniverse = Array.from(new Set([...universe, ...forcedStocks]));
+    
+    return finalUniverse;
 };
 
 export const saveEngineUniverse = (list: string[]) => {

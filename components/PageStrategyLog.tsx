@@ -104,6 +104,13 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
     onUpdateRules(next);
   };
 
+  /**
+   * Heatmap helper to map score (0-100) to 1-10 range
+   */
+  const scaleToTen = (score: number) => {
+    return Math.max(1, Math.min(10, Math.round(score / 10)));
+  };
+
   return (
     <div className="p-4 pb-24 animate-fade-in space-y-6 max-w-4xl mx-auto h-full flex flex-col">
       <div className="flex items-center gap-3 mb-2 shrink-0">
@@ -138,23 +145,33 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
       <div className="flex-1 min-h-0">
         {activeTab === 'HEATMAP' && (
             <div className="space-y-6 animate-slide-up">
-                {/* AI PICKS MINI LIST */}
+                {/* AI TOP 10 PICKS MINI LIST */}
                 <div className="bg-indigo-900/10 border border-indigo-500/20 rounded-2xl p-4">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
-                            <Sparkles size={14}/> Best 10 Intraday (AI Optimized)
+                            <Sparkles size={14}/> TOP 10 INTRADAY PICKS
                         </h3>
+                        <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Scaled 1-10</div>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                        {(aiIntradayPicks.length > 0 ? aiIntradayPicks : recommendations.slice(0, 10).map(r => r.symbol)).map(sym => {
+                        {(aiIntradayPicks.length > 0 ? aiIntradayPicks : recommendations.filter(r => r.timeframe === 'BTST' || r.timeframe === 'INTRADAY').slice(0, 10).map(r => r.symbol)).map(sym => {
                             const data = marketData[sym];
+                            const score = data?.technicals.score || 0;
+                            const scaled = scaleToTen(score);
                             const change = data?.changePercent || 0;
                             return (
-                                <div key={sym} className="bg-slate-900 border border-slate-800 p-2 rounded-lg text-center">
-                                    <div className="text-[10px] font-mono font-bold text-white">{sym.split('.')[0]}</div>
-                                    <div className={`text-[9px] font-black ${change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                <div key={sym} className="bg-slate-900 border border-slate-800 p-2 rounded-lg text-center relative overflow-hidden group">
+                                    <div className="text-[10px] font-mono font-bold text-white relative z-10">{sym.split('.')[0]}</div>
+                                    <div className={`text-[9px] font-black relative z-10 ${change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                                         {change >= 0 ? '+' : ''}{change.toFixed(1)}%
                                     </div>
+                                    <div className="mt-1 flex justify-center gap-0.5 relative z-10">
+                                        {[...Array(10)].map((_, i) => (
+                                            <div key={i} className={`w-1 h-1 rounded-full ${i < scaled ? 'bg-blue-500' : 'bg-slate-800'}`}></div>
+                                        ))}
+                                    </div>
+                                    {/* Score Overlay */}
+                                    <div className="absolute top-1 right-1 text-[7px] font-black text-slate-700">{scaled}/10</div>
                                 </div>
                             );
                         })}
@@ -165,28 +182,40 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {industries.map(industry => {
                         const stocks = groupedUniverse[industry];
+                        const avgScore = stocks.reduce((acc, s) => acc + (marketData[s]?.technicals.score || 0), 0) / (stocks.length || 1);
+                        const scaledIndustry = scaleToTen(avgScore);
+                        
                         return (
                             <div key={industry} className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4">
                                 <div className="flex justify-between items-center mb-3">
-                                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{industry}</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{industry}</span>
+                                        <span className={`text-[8px] font-bold px-1.5 rounded-full ${scaledIndustry >= 7 ? 'bg-green-500/20 text-green-400' : scaledIndustry >= 4 ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-700 text-slate-500'}`}>
+                                            Strength: {scaledIndustry}/10
+                                        </span>
+                                    </div>
                                 </div>
                                 <div className="flex flex-wrap gap-1">
                                     {stocks.map(sym => {
                                         const data = marketData[sym];
                                         const change = data?.changePercent || 0;
                                         const score = data?.technicals.score || 0;
+                                        const scaledStock = scaleToTen(score);
+                                        
                                         return (
                                             <div 
                                                 key={sym} 
-                                                title={`${sym}: ${change.toFixed(2)}% | Score: ${score}`}
-                                                className={`w-6 h-6 rounded-sm border border-black/20 transition-all ${
-                                                    change > 2 ? 'bg-green-500' : 
-                                                    change > 0 ? 'bg-green-800' : 
-                                                    change < -2 ? 'bg-red-500' : 
-                                                    change < 0 ? 'bg-red-900' : 
-                                                    'bg-slate-800'
+                                                title={`${sym}: ${change.toFixed(2)}% | Scaled: ${scaledStock}/10`}
+                                                className={`w-6 h-6 rounded-sm border border-black/20 transition-all flex items-center justify-center text-[7px] font-black text-white/50 ${
+                                                    scaledStock >= 9 ? 'bg-green-500' : 
+                                                    scaledStock >= 7 ? 'bg-green-700' : 
+                                                    scaledStock >= 5 ? 'bg-blue-600' : 
+                                                    scaledStock >= 3 ? 'bg-slate-700' : 
+                                                    'bg-red-900'
                                                 }`}
-                                            ></div>
+                                            >
+                                                {scaledStock}
+                                            </div>
                                         );
                                     })}
                                 </div>
@@ -249,7 +278,7 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
                 </div>
                 <div className="p-4 bg-indigo-900/10 border border-indigo-500/20 rounded-xl">
                     <p className="text-[10px] text-slate-400 italic font-medium leading-relaxed">
-                        Intraday logic prioritized for high-velocity scalping. Logic checks for <span className="text-white">Relative Volume (RVOL) > 2.0</span> and <span className="text-white">Price > VWAP</span> alongside Gemini-filtered stock selection.
+                        Intraday logic prioritized for high-velocity scalping. Logic checks for <span className="text-white">Relative Volume (RVOL) {'>'} 2.0</span> and <span className="text-white">Price {'>'} VWAP</span> alongside Gemini-filtered stock selection. Heatmap strength scaled 1-10 based on real-time volatility.
                     </p>
                 </div>
             </div>
@@ -261,6 +290,7 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
                     <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">
                         <BarChart3 size={14}/> Robot Universe Selection
                     </h3>
+                    <div className="text-[7px] font-black text-blue-500/50 uppercase tracking-widest">Banks & BSE Auto-Inclusion Active</div>
                 </div>
                 <div className="relative mb-4">
                     <Search className="absolute left-3 top-2.5 text-slate-600" size={14} />
@@ -324,12 +354,12 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
           <Shield size={14} className="text-indigo-400" /> Current Robot Focus
         </h3>
         <div className="flex gap-2 overflow-x-auto no-scrollbar">
-          {(aiIntradayPicks.length > 0 ? aiIntradayPicks : recommendations.slice(0, 5).map(r => r.symbol)).slice(0, 5).map((sym, i) => (
+          {(aiIntradayPicks.length > 0 ? aiIntradayPicks : recommendations.filter(r => r.timeframe === 'BTST' || r.timeframe === 'INTRADAY').slice(0, 5).map(r => r.symbol)).slice(0, 5).map((sym, i) => (
             <div key={sym} className="bg-slate-800/50 border border-slate-700 p-3 rounded-xl flex flex-col items-center text-center flex-shrink-0 w-28">
               <div className="text-[8px] font-black text-indigo-400 mb-1">UNIT {i + 1}</div>
               <div className="font-bold text-white text-xs mb-1 font-mono">{sym.split('.')[0]}</div>
               <div className="text-[9px] font-black text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full">
-                {marketData[sym]?.technicals.score?.toFixed(0) || '92'}
+                {scaleToTen(marketData[sym]?.technicals.score || 0)}/10
               </div>
             </div>
           ))}
