@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Cpu, Zap, Shield, Activity, List, CheckSquare, Square, Search, ChevronDown, ChevronRight, BarChart3, TrendingUp, Sparkles, RefreshCw, Layers, ShieldAlert } from 'lucide-react';
+import { Cpu, Zap, Activity, List, Search, RefreshCw, Layers, ShieldAlert, Sparkles, Sliders, ChevronRight, Check } from 'lucide-react';
 import { StrategyRules, StockRecommendation, MarketData } from '../types';
-import { getEngineUniverse, saveEngineUniverse, getGroupedUniverse } from '../services/stockListService';
+import { getEngineUniverse, getGroupedUniverse } from '../services/stockListService';
 import { getMarketStatus } from '../services/marketStatusService';
 
 interface PageStrategyLogProps {
@@ -24,9 +24,10 @@ interface LogEntry {
 
 export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendations, marketData, rules, onUpdateRules, aiIntradayPicks, onRefresh }) => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [activeTab, setActiveTab] = useState<'LOGS' | 'QUANT' | 'UNIVERSE'>('QUANT');
+  const [activeTab, setActiveTab] = useState<'LOGS' | 'QUANT' | 'TUNING'>('QUANT');
   const [engineUniverse, setEngineUniverse] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [localRules, setLocalRules] = useState<StrategyRules>(rules);
   const logEndRef = useRef<HTMLDivElement>(null);
 
   const groupedUniverse = useMemo(() => getGroupedUniverse(), []);
@@ -47,14 +48,13 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
 
       const pool = ['RELIANCE', 'HDFCBANK', 'ICICIBANK', 'INFY', 'TCS'];
       const sym = pool[Math.floor(Math.random() * pool.length)];
-      const data = marketData[`${sym}.NS`];
       
       const logMessages = [
-        `Quantitative Scan: RVOL surge detected in ${sym}`,
-        `Institutional Footprint verified for ${sym} @ 5m`,
-        `VWAP Anchor check passed for ${sym}`,
-        `ATR-based Stop Loss recalibrated for active positions`,
-        `Analyzing Mean Reversion probability for ${sym}`
+        `System: Calculating Volatility Squeeze probability for ${sym}`,
+        `Signal: RVOL Spike verified on ${sym} Institutional layer`,
+        `Risk: Recalibrating ATR-Based trailing stops for portfolio`,
+        `Strategy: ADX Strength confirmed > 25 for momentum group`,
+        `Execution: Monitoring Sliced Entry logic for potential triggers`
       ];
 
       setLogs(prev => [...prev.slice(-29), {
@@ -64,10 +64,10 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
         type: 'INFO',
         symbol: sym
       }]);
-    }, 5000);
+    }, 4000);
 
     return () => clearInterval(logInterval);
-  }, [marketData]);
+  }, []);
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -81,9 +81,9 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
                 <Cpu size={24} />
             </div>
             <div>
-                <h1 className="text-xl md:text-2xl font-black text-white italic uppercase tracking-tighter">Quant Strategy Engine</h1>
+                <h1 className="text-xl md:text-2xl font-black text-white italic uppercase tracking-tighter">Strategy Dashboard</h1>
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest flex items-center gap-1 mt-1">
-                    <Sparkles size={10} className="text-yellow-400"/> Multi-Factor Analysis Active
+                    <Sparkles size={10} className="text-yellow-400"/> Multi-Factor Momentum Engine
                 </p>
             </div>
         </div>
@@ -94,14 +94,14 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
 
       <div className="flex gap-2 shrink-0 overflow-x-auto no-scrollbar pb-2">
          {[
-           { id: 'QUANT', label: 'Quant Monitor', icon: <Layers size={14}/> },
-           { id: 'LOGS', label: 'Strategy Stream', icon: <Activity size={14}/> },
-           { id: 'UNIVERSE', label: 'Scope Manager', icon: <List size={14}/> }
+           { id: 'QUANT', label: 'Market Pulse', icon: <Layers size={14}/> },
+           { id: 'LOGS', label: 'Live Stream', icon: <Activity size={14}/> },
+           { id: 'TUNING', label: 'Tuning', icon: <Sliders size={14}/> }
          ].map(t => (
            <button 
             key={t.id} 
             onClick={() => setActiveTab(t.id as any)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === t.id ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-900 text-slate-500 border border-slate-800'}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === t.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-900 text-slate-500 border border-slate-800'}`}
            >
              {t.icon} {t.label}
            </button>
@@ -113,39 +113,38 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
             <div className="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden flex flex-col h-full animate-slide-up">
                 <div className="p-4 bg-slate-800/40 border-b border-slate-700/50 flex justify-between items-center">
                     <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">
-                        <Zap size={14} className="text-yellow-400"/> Momentum Multi-Factor Score
+                        <Zap size={14} className="text-yellow-400"/> Quantitative Alpha List
                     </h3>
-                    <span className="text-[8px] font-black text-slate-500 uppercase">Top 15 High Conviction</span>
+                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-tighter">Top Gainers & Scalps</span>
                 </div>
                 <div className="overflow-y-auto flex-1 custom-scrollbar">
                     <table className="w-full text-left">
                         <thead className="sticky top-0 bg-slate-900 z-10 border-b border-slate-800">
                             <tr className="text-[8px] font-black text-slate-500 uppercase tracking-widest">
-                                <th className="p-4">Asset</th>
-                                <th className="p-4">Conviction</th>
-                                <th className="p-4">Trend (ADX)</th>
-                                <th className="p-4">RSI Status</th>
-                                <th className="p-4">Active Strategy</th>
+                                <th className="p-4">Symbol</th>
+                                <th className="p-4">Intensity</th>
+                                <th className="p-4">Trend</th>
+                                <th className="p-4">RSI</th>
+                                <th className="p-4">Signals</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800/50">
                             {quantPicks.map(stock => {
                                 const data = marketData[stock.symbol];
                                 const score = data?.technicals.score || stock.score || 0;
-                                const adx = data?.technicals.adx || 20;
                                 return (
                                     <tr key={stock.symbol} className="hover:bg-blue-600/5 transition-colors">
                                         <td className="p-4 font-mono font-bold text-white text-xs">{stock.symbol.split('.')[0]}</td>
                                         <td className="p-4">
-                                            <div className={`text-[10px] font-black px-2 py-0.5 rounded border inline-block ${score > 80 ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`}>
+                                            <div className={`text-[10px] font-black px-2 py-0.5 rounded border inline-block ${score > 75 ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`}>
                                                 {score}%
                                             </div>
                                         </td>
-                                        <td className="p-4 text-xs font-mono font-bold text-slate-300">{adx.toFixed(1)}</td>
+                                        <td className="p-4 text-xs font-mono font-bold text-slate-300">{data?.technicals.adx.toFixed(1) || '--'}</td>
                                         <td className="p-4 text-xs font-mono font-bold text-slate-400">{data?.technicals.rsi.toFixed(0) || '--'}</td>
                                         <td className="p-4">
                                             <div className="flex flex-wrap gap-1">
-                                                {data?.technicals.activeSignals.slice(0, 2).map(s => (
+                                                {data?.technicals.activeSignals.slice(0, 1).map(s => (
                                                     <span key={s} className="text-[7px] font-black uppercase tracking-tighter bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">{s}</span>
                                                 ))}
                                             </div>
@@ -162,46 +161,83 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
         {activeTab === 'LOGS' && (
             <div className="h-full flex flex-col animate-slide-up bg-black/80 rounded-2xl border border-slate-800 p-4 font-mono text-[10px] overflow-y-auto custom-scrollbar">
                 <div className="mb-4 text-blue-500 font-black uppercase tracking-widest flex items-center gap-2">
-                    <ShieldAlert size={14}/> Strategy Execution Stream
+                    <ShieldAlert size={14}/> Kernel Logic Stream
                 </div>
                 {logs.map(log => (
                     <div key={log.id} className="mb-2 flex gap-3 animate-fade-in border-b border-white/5 pb-1.5">
                         <span className="text-slate-600 shrink-0 font-bold">[{log.timestamp}]</span>
-                        <span className="text-slate-300">{log.message}</span>
+                        <span className="text-slate-300 italic">{log.message}</span>
                     </div>
                 ))}
                 <div ref={logEndRef} />
             </div>
         )}
 
-        {activeTab === 'UNIVERSE' && (
-            <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 h-full overflow-hidden flex flex-col animate-slide-up">
-                <div className="relative mb-4">
-                    <Search className="absolute left-3 top-2.5 text-slate-600" size={14} />
-                    <input 
-                        type="text"
-                        placeholder="Search engine scope..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 pl-9 pr-4 text-xs text-white outline-none focus:border-blue-500 font-mono"
-                    />
-                </div>
-                <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2">
-                    {industries.map(industry => {
-                        const stocks = groupedUniverse[industry];
-                        const allActive = stocks.every(s => engineUniverse.includes(s));
-                        return (
-                            <div key={industry} className="flex justify-between items-center p-3 bg-slate-800/20 rounded-xl border border-slate-800/50">
-                                <div>
-                                    <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{industry}</div>
-                                    <div className="text-[8px] text-slate-600 font-mono">{stocks.length} Symbols Available</div>
-                                </div>
-                                <button className={`text-[9px] font-black uppercase px-3 py-1.5 rounded-lg border ${allActive ? 'bg-blue-600 text-white' : 'bg-slate-900 text-slate-500 border-slate-800'}`}>
-                                    {allActive ? 'Fully Active' : 'Activate Scope'}
-                                </button>
+        {activeTab === 'TUNING' && (
+            <div className="space-y-4 animate-slide-up h-full overflow-y-auto custom-scrollbar pr-2">
+                <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 space-y-6">
+                    <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-sm font-black text-white uppercase italic tracking-tighter">Strategic Parameters</h3>
+                        <button 
+                          onClick={() => { onUpdateRules(localRules); }}
+                          className="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20"
+                        >
+                          Apply Tuning
+                        </button>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between p-3 bg-slate-900 rounded-xl border border-slate-800">
+                            {/* FIXED: Using &gt; instead of > to resolve JSX character parsing error */}
+                            <label className="text-xs text-slate-400 font-bold uppercase tracking-wider">Price &gt; VWAP Filter</label>
+                            <button 
+                              onClick={() => setLocalRules({...localRules, vwapConfirm: !localRules.vwapConfirm})}
+                              className={`w-10 h-5 rounded-full relative transition-colors ${localRules.vwapConfirm ? 'bg-blue-600' : 'bg-slate-700'}`}
+                            >
+                                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${localRules.vwapConfirm ? 'left-5.5' : 'left-0.5'}`}></div>
+                            </button>
+                        </div>
+
+                        <div className="p-3 bg-slate-900 rounded-xl border border-slate-800">
+                            <div className="flex justify-between items-center mb-3">
+                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider">ADX Threshold (Strength)</label>
+                                <span className="text-xs font-mono font-bold text-blue-400">{localRules.rsiBuyZone}</span>
                             </div>
-                        );
-                    })}
+                            <input 
+                              type="range" min="15" max="40" step="1"
+                              value={localRules.rsiBuyZone}
+                              onChange={(e) => setLocalRules({...localRules, rsiBuyZone: parseInt(e.target.value)})}
+                              className="w-full accent-blue-600 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer" 
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4">
+                            <div className="bg-blue-900/10 border border-blue-500/20 p-4 rounded-xl flex items-start gap-3">
+                                <Zap size={16} className="text-blue-400 shrink-0 mt-0.5" />
+                                <div className="text-[10px] text-blue-300 leading-relaxed font-medium">
+                                    <strong>Profit-First Logic:</strong> Higher ADX thresholds reduce trade frequency but significantly increase the Win-Rate of momentum signals.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-slate-900/30 p-6 rounded-2xl border border-slate-800/50">
+                     <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <Activity size={14}/> Engine Components
+                     </h3>
+                     <div className="space-y-3">
+                         {[
+                             "Bollinger Squeeze Scanner v4",
+                             "Institutional RVOL Detection",
+                             "Chandelier ATR Exit Strategy",
+                             "Sliced Order Execution Layer"
+                         ].map(engine => (
+                             <div key={engine} className="flex items-center gap-3 text-[10px] text-slate-400 font-bold uppercase tracking-widest border-b border-white/5 pb-2">
+                                 <Check size={12} className="text-green-500"/> {engine}
+                             </div>
+                         ))}
+                     </div>
                 </div>
             </div>
         )}

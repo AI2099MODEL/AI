@@ -9,7 +9,7 @@ export interface TradeResult {
     reason?: string;
 }
 
-const MAX_GLOBAL_POSITIONS = 10; 
+const MAX_GLOBAL_POSITIONS = 8; 
 const FLAT_BROKERAGE = 20; 
 
 const getISTTime = () => {
@@ -36,7 +36,7 @@ export const runAutoTradeEngine = (
     const day = ist.getDay();
     const currentMinutes = ist.getHours() * 60 + ist.getMinutes();
     
-    if (day === 0 || day === 6) return []; // Weekends Off
+    if (day === 0 || day === 6) return []; 
 
     const marketOpen = 9 * 60 + 15;
     const marketClose = 15 * 60 + 30;
@@ -46,37 +46,41 @@ export const runAutoTradeEngine = (
     const isMarketOpen = currentMinutes >= marketOpen && currentMinutes < marketClose;
     const isSquareOff = currentMinutes >= squareOffTime;
 
-    // 1. SMART EXIT & TRAILING LOGIC
+    // 1. SMART EXIT SYSTEM
     paperPortfolio.forEach(item => {
         const data = marketData[item.symbol];
         if (!data || !isMarketOpen) return;
 
         const currentPnlPercent = ((data.price - item.avgCost) / item.avgCost) * 100;
-        const atr = data.technicals.atr || (data.price * 0.015);
+        const atr = data.technicals.atr || (data.price * 0.02);
         
         let shouldExit = false;
         let exitReason = "";
 
-        // Strategy 1: ATR-Based Dynamic Stop Loss (1.5x ATR)
-        const stopPrice = item.avgCost - (atr * 1.5);
+        // Strategy A: Chandelier Exit (ATR Trailing)
+        // If price drops 1.5x ATR from entry, exit. 
+        // If in profit > 3%, trail with 1.0x ATR.
+        const multiplier = currentPnlPercent > 3.0 ? 1.0 : 1.5;
+        const stopPrice = item.avgCost - (atr * multiplier);
+        
         if (data.price < stopPrice) {
             shouldExit = true;
-            exitReason = "Volatility Stop (1.5x ATR) Hit";
+            exitReason = `Volatility Stop (${multiplier}x ATR)`;
         }
-        // Strategy 2: Profit Trailing (If profit > 3%, set trailing SL at 1.5%)
-        else if (currentPnlPercent > 5.0 && data.technicals.score < 50) {
+        // Strategy B: Time-Based Decay
+        else if (currentPnlPercent < 0 && data.technicals.score < 30) {
             shouldExit = true;
-            exitReason = "Momentum Fade - Profit Locked";
+            exitReason = "Weakening Momentum Exit";
         }
-        // Strategy 3: Hard Target
-        else if (currentPnlPercent >= 10.0) {
+        // Strategy C: Hard Target Scaling
+        else if (currentPnlPercent >= 12.0) {
             shouldExit = true;
-            exitReason = "High Conviction Target Hit";
+            exitReason = "Elite Take-Profit Target";
         }
-        // Strategy 4: EOD Square Off for Intraday
+        // Strategy D: Intraday Close
         else if (item.timeframe === 'INTRADAY' && isSquareOff) {
             shouldExit = true;
-            exitReason = "EOD Intraday Square Off";
+            exitReason = "System Square-Off";
         }
 
         if (shouldExit) {
@@ -96,7 +100,7 @@ export const runAutoTradeEngine = (
         }
     });
 
-    // 2. HIGH-CONVICTION ENTRY LOGIC
+    // 2. HIGH-ALPHA ENTRY SYSTEM
     if (!isMarketOpen || currentMinutes >= entryDeadline) return results;
     if (paperPortfolio.length >= MAX_GLOBAL_POSITIONS) return results;
 
@@ -108,12 +112,15 @@ export const runAutoTradeEngine = (
             const isAlreadyHeld = paperPortfolio.some(p => p.symbol === r.symbol);
             const signals = data.technicals.activeSignals;
             
-            // WORLD CLASS FILTER: Must have institutional volume + VWAP support
-            const hasInstitutions = signals.some(s => s.includes("Institutional"));
-            const hasVWAP = signals.some(s => s.includes("VWAP"));
-            const isStrong = data.technicals.score >= 80;
+            // WORLD CLASS CRITERIA:
+            // 1. Must be Strong Trend (ADX > 25)
+            // 2. Must have Volume Pulse (RVOL > 1.5)
+            // 3. Must be above EMA 9
+            const isStrong = data.technicals.score >= 70;
+            const hasVolume = signals.some(s => s.includes("RVOL"));
+            const hasTrend = signals.some(s => s.includes("Trend"));
 
-            return isStrong && hasInstitutions && hasVWAP && !isAlreadyHeld;
+            return isStrong && hasVolume && hasTrend && !isAlreadyHeld;
         })
         .sort((a, b) => (marketData[b.symbol]?.technicals.score || 0) - (marketData[a.symbol]?.technicals.score || 0));
 
@@ -138,7 +145,7 @@ export const runAutoTradeEngine = (
                     broker: 'PAPER', brokerage: FLAT_BROKERAGE, timeframe: rec.timeframe || 'INTRADAY'
                 },
                 newFunds: { ...currentFunds }, 
-                reason: `Smart Entry: ${data.technicals.activeSignals.join(' + ')}`
+                reason: `Alpha Entry: ${data.technicals.activeSignals.join(' + ')}`
             });
             break; 
         }

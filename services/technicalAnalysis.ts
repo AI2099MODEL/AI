@@ -1,17 +1,18 @@
 
 import { Candle, TechnicalSignals } from "../types";
 
-// --- Advanced Math Helpers ---
+// --- Quantitative Math Helpers ---
 const getCloses = (candles: Candle[]) => candles.map(c => c.close);
 const getHighs = (candles: Candle[]) => candles.map(c => c.high);
 const getLows = (candles: Candle[]) => candles.map(c => c.low);
 
 const calcSMA = (data: number[], period: number): number => {
-  if (data.length < period) return data[data.length - 1];
+  if (data.length < period) return data[data.length - 1] || 0;
   return data.slice(-period).reduce((a, b) => a + b, 0) / period;
 };
 
 const calcEMA = (data: number[], period: number): number[] => {
+  if (data.length === 0) return [0];
   const k = 2 / (period + 1);
   const emaArray = [data[0]];
   for (let i = 1; i < data.length; i++) {
@@ -20,12 +21,17 @@ const calcEMA = (data: number[], period: number): number[] => {
   return emaArray;
 };
 
-// --- Professional Grade Indicators ---
+const calcStdDev = (data: number[], period: number): number => {
+  const sma = calcSMA(data, period);
+  const variance = data.slice(-period).reduce((acc, val) => acc + Math.pow(val - sma, 2), 0) / period;
+  return Math.sqrt(variance);
+};
+
+// --- Professional Signal Indicators ---
 
 export const calculateADX = (candles: Candle[], period: number = 14): number => {
     if (candles.length < period * 2) return 20;
     
-    let plusDM = 0, minusDM = 0, tr = 0;
     const trs: number[] = [], plusDMs: number[] = [], minusDMs: number[] = [];
 
     for (let i = 1; i < candles.length; i++) {
@@ -48,6 +54,7 @@ export const calculateADX = (candles: Candle[], period: number = 14): number => 
     const plusDI = (smoothPlusDM / smoothTR) * 100;
     const minusDI = (smoothMinusDM / smoothTR) * 100;
     
+    if (plusDI + minusDI === 0) return 0;
     return Math.abs((plusDI - minusDI) / (plusDI + minusDI)) * 100;
 };
 
@@ -79,8 +86,6 @@ export const calculateATR = (candles: Candle[], period: number = 14): number => 
     return trs.slice(-period).reduce((a, b) => a + b, 0) / period;
 };
 
-// --- Advanced Engine Logic ---
-
 export const analyzeStockTechnical = (candles: Candle[]): TechnicalSignals => {
   if (candles.length < 30) {
       return { 
@@ -93,75 +98,80 @@ export const analyzeStockTechnical = (candles: Candle[]): TechnicalSignals => {
   const closes = getCloses(candles);
   const lastPrice = closes[closes.length - 1];
   
-  // 1. Core Indicators
+  // 1. Core Technicals
   const rsi = calculateRSI(candles);
   const adx = calculateADX(candles);
   const atr = calculateATR(candles);
   
-  // 2. Trend & Volume Metrics
-  const ema9Series = calcEMA(closes, 9);
-  const ema21Series = calcEMA(closes, 21);
-  const ema9 = ema9Series[ema9Series.length - 1];
-  const ema21 = ema21Series[ema21Series.length - 1];
+  // 2. Trend Metrics
+  const ema9 = calcEMA(closes, 9).pop() || 0;
+  const ema21 = calcEMA(closes, 21).pop() || 0;
   
+  // 3. Volatility Squeeze (Bollinger Bands)
+  const sma20 = calcSMA(closes, 20);
+  const stdDev = calcStdDev(closes, 20);
+  const upperBB = sma20 + (stdDev * 2);
+  const lowerBB = sma20 - (stdDev * 2);
+  const bbWidth = (upperBB - lowerBB) / sma20;
+  const historicalBBWidth = calcSMA(candles.map((_, i) => {
+      const slice = closes.slice(Math.max(0, i - 20), i + 1);
+      if (slice.length < 2) return 0;
+      const s = slice.reduce((a, b) => a + b, 0) / slice.length;
+      const v = slice.reduce((acc, val) => acc + Math.pow(val - s, 2), 0) / slice.length;
+      const d = Math.sqrt(v);
+      return (d * 4) / s;
+  }), 50);
+
+  // 4. Institutional RVOL
   const volumes = candles.map(c => c.volume);
   const avgVol = calcSMA(volumes, 20);
   const rvol = volumes[volumes.length - 1] / (avgVol || 1);
 
-  // 3. VWAP Approximation
-  let cumulativePV = 0, cumulativeV = 0;
-  candles.slice(-20).forEach(c => {
-      cumulativePV += ((c.high + c.low + c.close) / 3) * c.volume;
-      cumulativeV += c.volume;
-  });
-  const vwap = cumulativeV > 0 ? cumulativePV / cumulativeV : lastPrice;
-
-  // 4. Scoring Engine (Strategy-First)
+  // 5. Scoring Engine
   const activeSignals: string[] = [];
   let score = 0;
 
-  // A. The Anchor: VWAP Logic
-  if (lastPrice > vwap) {
-      score += 25;
-      activeSignals.push("Price Anchor (VWAP+)");
-  }
-
-  // B. The Fuel: Institutional RVOL Logic
-  if (rvol > 2.5) {
-      score += 35;
-      activeSignals.push("Institutional Pulse (RVOL 2.5+)");
-  } else if (rvol > 1.5) {
-      score += 15;
-      activeSignals.push("Volume Expansion");
-  }
-
-  // C. The Trend: ADX Strength
-  if (adx > 25) {
+  // Signal A: Trend Alignment
+  if (lastPrice > ema9 && ema9 > ema21) {
       score += 20;
-      activeSignals.push("Strong Trend (ADX)");
-      if (ema9 > ema21) score += 10;
+      activeSignals.push("Trend Master (9>21)");
   }
 
-  // D. Momentum: RSI Crossover
-  if (rsi > 55 && rsi < 75) {
+  // Signal B: The Volatility Squeeze Breakout
+  if (bbWidth > historicalBBWidth * 1.5 && lastPrice > upperBB) {
+      score += 30;
+      activeSignals.push("Volatility Breakout (BB Squeeze)");
+  }
+
+  // Signal C: High Intensity RVOL
+  if (rvol > 2.0) {
+      score += 25;
+      activeSignals.push("Smart Money Burst (RVOL 2+)");
+  }
+
+  // Signal D: Trend Strength
+  if (adx > 25) {
       score += 15;
-      activeSignals.push("Bullish Momentum");
-  } else if (rsi < 30) {
-      score += 20; // Oversold Mean Reversion
-      activeSignals.push("Mean Reversion (Oversold)");
+      activeSignals.push("High Conviction Trend (ADX)");
   }
 
-  let strength: 'STRONG BUY' | 'BUY' | 'HOLD' | 'SELL' = 'HOLD';
+  // Signal E: RSI Rebound
+  if (rsi > 40 && rsi < 70 && lastPrice > closes[closes.length - 2]) {
+      score += 10;
+      activeSignals.push("Momentum Push");
+  }
+
   const finalScore = Math.min(100, score);
+  let strength: 'STRONG BUY' | 'BUY' | 'HOLD' | 'SELL' = 'HOLD';
   
-  if (finalScore >= 80) strength = 'STRONG BUY';
-  else if (finalScore >= 60) strength = 'BUY';
-  else if (finalScore <= 30) strength = 'SELL';
+  if (finalScore >= 75) strength = 'STRONG BUY';
+  else if (finalScore >= 55) strength = 'BUY';
+  else if (finalScore <= 25) strength = 'SELL';
 
   return { 
       rsi, adx, atr, score: finalScore, activeSignals, signalStrength: strength,
       macd: {macd:0, signal:0, histogram:0}, stoch: {k:50, d:50},
-      bollinger: {upper:0, middle:0, lower:0, percentB:0},
+      bollinger: {upper: upperBB, middle: sma20, lower: lowerBB, percentB: (lastPrice - lowerBB) / (upperBB - lowerBB)},
       ema: {ema9, ema21}, obv: 0
   };
 };

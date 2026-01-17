@@ -195,7 +195,8 @@ export default function App() {
 
   useEffect(() => {
     loadMarketData();
-    refreshIntervalRef.current = setInterval(loadMarketData, 60000); 
+    // Refresh market data every 15 seconds as requested for live experience
+    refreshIntervalRef.current = setInterval(loadMarketData, 15000); 
     aiPickIntervalRef.current = setInterval(updateAiIntradayPicks, 600000);
     reportTimerRef.current = setInterval(checkAndSendReports, 30000);
     

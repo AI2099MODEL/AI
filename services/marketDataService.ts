@@ -11,10 +11,11 @@ const pendingRequests = new Map<string, Promise<StockData | null>>();
 
 /**
  * Get TTL based on the interval. 
+ * Reduced for high-frequency updates.
  */
 const getCacheTTL = (interval: string): number => {
-  if (interval.includes('m')) return 2 * 60 * 1000; // 2 mins for intraday
-  if (interval.includes('d')) return 30 * 60 * 1000; // 30 mins for daily
+  if (interval.includes('m')) return 10 * 1000; // 10 seconds for intraday high-frequency
+  if (interval.includes('d')) return 15 * 60 * 1000; // 15 mins for daily
   return 4 * 60 * 60 * 1000; // 4 hours for weekly/monthly
 };
 
@@ -119,7 +120,8 @@ export const fetchRealStockData = async (
         const ticker = symbol.toUpperCase().includes('.') ? symbol.toUpperCase() : `${symbol.toUpperCase()}.NS`;
         
         try {
-            const cb = Math.floor(Date.now() / 20000); // 20s cache buster
+            // High-frequency cache buster: every 10 seconds
+            const cb = Math.floor(Date.now() / 10000); 
             const targetUrl = `${YAHOO_CHART_BASE}${ticker}?interval=${interval}&range=${range}&_cb=${cb}`;
             
             const yahooRaw = await fetchWithProxy(targetUrl);
