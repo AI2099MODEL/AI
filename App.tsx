@@ -71,17 +71,12 @@ export default function App() {
   
   const refreshIntervalRef = useRef<any>(null);
   const botIntervalRef = useRef<any>(null);
-  const aiPickIntervalRef = useRef<any>(null);
-  const reportTimerRef = useRef<any>(null);
-  const lastReportDateRef = useRef<string | null>(null);
 
   useEffect(() => { 
     const splashTimer = setTimeout(() => setShowSplash(false), 2000); 
     loadAppData();
 
-    // Listen for Service Worker updates
     const handleUpdate = () => {
-      console.log('App: Update Event Received');
       setUpdateAvailable(true);
     };
     window.addEventListener('sw-update-available', handleUpdate);
@@ -119,9 +114,43 @@ export default function App() {
   const notifyTelegram = useCallback(async (tx: Transaction, reason?: string) => {
     if (!settings.telegramBotToken || !settings.telegramChatId) return;
     const emoji = tx.type === 'BUY' ? '🔵' : '🔴';
-    const message = `${emoji} *Bot Execution: ${tx.type}*\nSymbol: ${tx.symbol}\nPrice: ₹${tx.price.toFixed(2)}\nReason: ${reason || 'AI Momentum'}`;
+    const message = `${emoji} *Trade Notification: ${tx.type}*\nSymbol: ${tx.symbol}\nPrice: ₹${tx.price.toFixed(2)}\nQuantity: ${tx.quantity}\nReason: ${reason || 'AI Strategy'}\nBroker: ${tx.broker}`;
     await sendTelegramMessage(settings.telegramBotToken, settings.telegramChatId, message);
   }, [settings]);
+
+  const handleTestTrade = async () => {
+    const testSymbol = 'RELIANCE.NS';
+    const data = await fetchRealStockData(testSymbol, settings);
+    const price = data?.price || 2450.50;
+    
+    const tx: Transaction = {
+        id: `test-${Date.now()}`,
+        type: 'BUY',
+        symbol: testSymbol,
+        assetType: 'STOCK',
+        quantity: 1,
+        price: price,
+        timestamp: Date.now(),
+        broker: 'PAPER',
+        brokerage: 20
+    };
+
+    setTransactions(prev => {
+        const next = [...prev, tx];
+        saveData('transactions', next);
+        return next;
+    });
+
+    setPaperPortfolio(prev => {
+        const newItem: PortfolioItem = { symbol: testSymbol, type: 'STOCK', quantity: 1, avgCost: price, totalCost: price + 20, broker: 'PAPER' };
+        const next = [...prev, newItem];
+        saveData('portfolio', next);
+        return next;
+    });
+
+    showNotification("Test Trade Executed: RELIANCE");
+    notifyTelegram(tx, "Manual Connection Test");
+  };
 
   const loadMarketData = useCallback(async () => {
     const ideasUniverse = getIdeasWatchlist();
@@ -240,19 +269,13 @@ export default function App() {
 
   return (
     <div className="h-full flex flex-col bg-background text-slate-100 overflow-hidden">
-      {/* UPDATE NOTIFICATION */}
       {updateAvailable && (
         <div className="fixed top-0 left-0 right-0 z-[100] bg-blue-600 p-3 flex items-center justify-between shadow-2xl animate-fade-in">
            <div className="flex items-center gap-3">
               <Sparkles className="text-white animate-pulse" size={20} />
               <span className="text-xs font-black uppercase tracking-widest text-white">New version available!</span>
            </div>
-           <button 
-             onClick={() => window.location.reload()}
-             className="px-4 py-1.5 bg-white text-blue-600 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all"
-           >
-             Update Now
-           </button>
+           <button onClick={() => window.location.reload()} className="px-4 py-1.5 bg-white text-blue-600 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">Update Now</button>
         </div>
       )}
 
@@ -266,7 +289,7 @@ export default function App() {
         {activePage === 1 && <PageStrategyLog recommendations={recommendations} marketData={marketData} rules={settings.strategyRules || DEFAULT_RULES} onUpdateRules={(r) => { setSettings(s => ({...s, strategyRules: r})); saveData('settings', {...settings, strategyRules: r}); }} aiIntradayPicks={aiIntradayPicks} onRefresh={() => loadMarketData()} />}
         {activePage === 2 && <PagePaperTrading holdings={paperPortfolio} marketData={marketData} analysisData={analysisData} onSell={handleInitiateSell} onAnalyze={() => setIsAnalyzing(true)} isAnalyzing={isAnalyzing} funds={funds} activeBots={activeBots} onToggleBot={(b) => setActiveBots(p => ({...p, [b]: !p[b]}))} transactions={transactions} onUpdateFunds={(f) => { setFunds(f); saveData('funds', f); }} />}
         {activePage === 3 && <PageLivePNL title="Broker Portfolio" subtitle="Live Connected Accounts" icon={Briefcase} holdings={paperPortfolio.filter(h => h.broker !== 'PAPER')} marketData={marketData} analysisData={analysisData} onSell={handleInitiateSell} brokerBalances={{}} />}
-        {activePage === 4 && <PageConfiguration settings={settings} onSave={(s) => { setSettings(s); saveData('settings', s); showNotification("Settings Saved"); }} transactions={transactions} activeBots={activeBots} onToggleBot={(b) => setActiveBots(p => ({...p, [b]: !p[b]}))} />}
+        {activePage === 4 && <PageConfiguration settings={settings} onSave={(s) => { setSettings(s); saveData('settings', s); showNotification("Settings Saved"); }} transactions={transactions} activeBots={activeBots} onToggleBot={(b) => setActiveBots(p => ({...p, [b]: !p[b]}))} onTestTrade={handleTestTrade} />}
       </main>
       <BottomNav activeTab={activePage} onChange={setActivePage} />
       {selectedStock && <TradeModal isOpen={isTradeModalOpen} onClose={() => setIsTradeModalOpen(false)} stock={selectedStock} currentPrice={marketData[selectedStock.symbol]?.price || selectedStock.currentPrice} funds={funds} holdings={paperPortfolio.filter(p => p.symbol === selectedStock.symbol)} activeBrokers={['PAPER']} initialBroker={initialBroker} onBuy={handleBuy} onSell={handleSell} />}

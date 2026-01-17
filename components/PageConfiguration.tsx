@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { AppSettings, Transaction, BrokerID } from '../types';
-import { Save, Building2, Bell, List, Trash2, FileText, Search, CheckSquare, Square, ChevronDown, ChevronRight, Tags, ShieldCheck, Key } from 'lucide-react';
+import { Save, Building2, Bell, List, Trash2, FileText, Search, CheckSquare, Square, ChevronDown, ChevronRight, Tags, ShieldCheck, Key, Zap, Info, Rocket, Smartphone, ShieldAlert, Cpu } from 'lucide-react';
 import { getFullUniverse, getIdeasWatchlist, saveIdeasWatchlist, getGroupedUniverse } from '../services/stockListService';
 
 interface PageConfigurationProps {
@@ -10,11 +10,12 @@ interface PageConfigurationProps {
   transactions: Transaction[]; 
   activeBots: Record<string, boolean>;
   onToggleBot: (broker: string) => void;
+  onTestTrade?: () => void;
 }
 
-type TabType = 'REPORTING' | 'STOCK_BROKERS' | 'IDEAS_WATCHLIST';
+type TabType = 'REPORTING' | 'STOCK_BROKERS' | 'IDEAS_WATCHLIST' | 'FEATURES';
 
-export const PageConfiguration: React.FC<PageConfigurationProps> = ({ settings, onSave, transactions, activeBots, onToggleBot }) => {
+export const PageConfiguration: React.FC<PageConfigurationProps> = ({ settings, onSave, transactions, activeBots, onToggleBot, onTestTrade }) => {
   const [formData, setFormData] = useState<AppSettings>(settings);
   const [activeSubTab, setActiveSubTab] = useState<TabType>('STOCK_BROKERS');
   const [watchlist, setWatchlist] = useState<string[]>([]);
@@ -75,8 +76,6 @@ export const PageConfiguration: React.FC<PageConfigurationProps> = ({ settings, 
     const next: Record<string, string[]> = {};
     const searchLower = searchTerm.toLowerCase();
     
-    // Fixed: Cast Object.entries result to explicitly type 'stocks' as string[] 
-    // to resolve 'Property filter does not exist on type unknown' error.
     (Object.entries(groupedUniverse) as [string, string[]][]).forEach(([industry, stocks]) => {
       const matchingStocks = stocks.filter(s => s.toLowerCase().includes(searchLower));
       const industryMatches = industry.toLowerCase().includes(searchLower);
@@ -110,6 +109,7 @@ export const PageConfiguration: React.FC<PageConfigurationProps> = ({ settings, 
       { id: 'STOCK_BROKERS', label: 'Brokers', icon: <Building2 size={16}/> },
       { id: 'IDEAS_WATCHLIST', label: 'Ideas Watch', icon: <List size={16}/> },
       { id: 'REPORTING', label: 'Reporting', icon: <FileText size={16}/> },
+      { id: 'FEATURES', label: 'Features', icon: <Info size={16}/> },
   ];
 
   return (
@@ -326,11 +326,98 @@ export const PageConfiguration: React.FC<PageConfigurationProps> = ({ settings, 
                             <label className="block text-[10px] text-slate-400 mb-1 font-bold uppercase">Chat ID</label>
                             <input type="text" value={formData.telegramChatId} onChange={(e) => setFormData({...formData, telegramChatId: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white outline-none focus:border-blue-500 font-mono" placeholder="-100..." />
                         </div>
+
+                        <div className="pt-4 mt-4 border-t border-slate-800">
+                             <button 
+                               onClick={onTestTrade}
+                               className="w-full py-3 bg-blue-600/10 border border-blue-600/30 rounded-xl text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-blue-600/20 transition-all active:scale-95"
+                             >
+                                <Zap size={14}/> Trigger Test Trade Alert
+                             </button>
+                             <p className="text-[8px] text-slate-600 mt-2 text-center uppercase font-bold">Executing this will buy 1 RELIANCE share & notify Telegram</p>
+                        </div>
                     </section>
 
                     <button onClick={handleReset} className="w-full py-4 rounded-xl text-xs font-bold text-red-400 bg-red-900/10 border border-red-900/30 flex items-center justify-center gap-2 mt-4 hover:bg-red-900/20 transition-all">
                         <Trash2 size={14}/> Factory Reset
                     </button>
+                </div>
+            )}
+
+            {activeSubTab === 'FEATURES' && (
+                <div className="space-y-6 animate-slide-up pb-10">
+                    <div className="text-center py-6">
+                        <div className="w-16 h-16 bg-blue-600/20 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-blue-500/30">
+                            <Rocket size={32} className="text-blue-400" />
+                        </div>
+                        <h2 className="text-xl font-black text-white italic uppercase tracking-tighter">AI Equity Pro Explorer</h2>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-1">Platform Version 3.4.0 High-Momentum Engine</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         {[
+                             { 
+                                icon: <Zap size={20} className="text-yellow-400"/>, 
+                                title: "Alpha Scanning", 
+                                desc: "Multi-factor technical scan tracking RSI, ADX, RVOL & BB-Squeeze across 200+ NSE symbols.",
+                                color: "border-yellow-500/30"
+                             },
+                             { 
+                                icon: <Cpu size={20} className="text-blue-400"/>, 
+                                title: "Auto-Bot Core", 
+                                desc: "Algorithmic entry and exit engine with intelligent ATR-based trailing stop-loss management.",
+                                color: "border-blue-500/30"
+                             },
+                             { 
+                                icon: <ShieldAlert size={20} className="text-red-400"/>, 
+                                title: "Local Encryption", 
+                                desc: "All sensitive API keys (Dhan, Shoonya, Kite) are stored strictly on-device using browser storage.",
+                                color: "border-red-500/30"
+                             },
+                             { 
+                                icon: <Smartphone size={20} className="text-green-400"/>, 
+                                title: "PWA Native Experience", 
+                                desc: "Installable as a standalone app with full-screen interface, touch-optimized UI and splash screen.",
+                                color: "border-green-500/30"
+                             },
+                             { 
+                                icon: <Building2 size={20} className="text-purple-400"/>, 
+                                title: "Live Integration", 
+                                desc: "Seamlessly connect live accounts to track real holdings and execute via official broker APIs.",
+                                color: "border-purple-500/30"
+                             },
+                             { 
+                                icon: <Bell size={20} className="text-indigo-400"/>, 
+                                title: "Telegram Sync", 
+                                desc: "Receive instant push notifications for every bot execution and detailed daily PNL reports.",
+                                color: "border-indigo-500/30"
+                             }
+                         ].map((feature, i) => (
+                             <div key={i} className={`p-5 rounded-2xl bg-surface border ${feature.color} flex flex-col gap-3 group hover:scale-[1.02] transition-all`}>
+                                 <div className="p-2 bg-slate-900 rounded-xl w-fit">{feature.icon}</div>
+                                 <h4 className="font-black text-white text-xs uppercase italic tracking-wider">{feature.title}</h4>
+                                 <p className="text-[10px] text-slate-400 leading-relaxed font-medium">{feature.desc}</p>
+                             </div>
+                         ))}
+                    </div>
+
+                    <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 mt-6">
+                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Supported Market Horizons</h4>
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center text-[11px] font-bold">
+                                <span className="text-slate-300">BTST Momentum</span>
+                                <span className="text-green-400">ENABLED</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[11px] font-bold">
+                                <span className="text-slate-300">Intraday Scalping</span>
+                                <span className="text-blue-400">AI OPTIMIZED</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[11px] font-bold">
+                                <span className="text-slate-300">Weekly Swing</span>
+                                <span className="text-purple-400">ACTIVE</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
