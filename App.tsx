@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { checkAndRefreshStockList } from './services/stockListService';
 import { fetchRealStockData } from './services/marketDataService';
@@ -167,7 +166,7 @@ export default function App() {
                       } else {
                           setPaperPortfolio(prev => prev.filter(p => p.symbol !== res.transaction!.symbol));
                       }
-                      showNotification(`Bot Executed: ${res.reason}`);
+                      showNotification(`Bot Executed: ${res.reason || 'Momentum Entry'}`);
                   }
               });
           }, 15000);
@@ -193,7 +192,11 @@ export default function App() {
 
   return (
     <div className="h-full flex flex-col bg-background text-slate-100 overflow-hidden">
-      {notification && <div className="fixed top-4 left-4 right-4 z-[60] bg-slate-800 text-white px-4 py-3 rounded-xl border border-slate-700 animate-slide-up text-xs font-bold text-center">{notification}</div>}
+      {notification && (
+        <div className="fixed top-4 left-4 right-4 z-[60] bg-slate-800 text-white px-4 py-3 rounded-xl border border-slate-700 animate-slide-up text-xs font-bold text-center">
+          {typeof notification === 'string' ? notification : JSON.stringify(notification)}
+        </div>
+      )}
       <main className="flex-1 overflow-y-auto custom-scrollbar w-full max-w-lg mx-auto md:max-w-7xl md:border-x md:border-slate-800">
         {activePage === 0 && <PageMarket recommendations={recommendations} marketData={marketData} onTrade={(s) => { setSelectedStock(s); setIsTradeModalOpen(true); }} onRefresh={() => { setRecommendations([]); loadMarketData(); }} isLoading={isLoading} enabledMarkets={settings.enabledMarkets} />}
         {activePage === 1 && <PagePaperTrading holdings={paperPortfolio} marketData={marketData} analysisData={analysisData} onSell={(s, b) => handleSell(s, 1, marketData[s]?.price || 0, b)} onAnalyze={handleManualAnalyze} isAnalyzing={isAnalyzing} funds={funds} activeBots={activeBots} onToggleBot={(b) => setActiveBots(p => ({...p, [b]: !p[b]}))} transactions={transactions} onUpdateFunds={setFunds} />}

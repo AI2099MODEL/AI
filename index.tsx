@@ -1,5 +1,4 @@
 
-// Fix: Import React and required types. Using React.Component explicitly to ensure members like state and props are correctly inherited and recognized by TypeScript.
 import React, { ErrorInfo, ReactNode } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
@@ -14,11 +13,11 @@ interface ErrorBoundaryState {
   errorInfo: ErrorInfo | null;
 }
 
-// Fix: Extending React.Component with generics for props and state. This ensures that 'this.state', 'this.setState', and 'this.props' are correctly typed and inherited.
+// Fixed: Explicitly using React.Component to resolve member access issues (state, setState, props)
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  // Fix: Initialize state in constructor to satisfy stricter TypeScript checks for React components and ensure 'this.state' is properly recognized as a member of the class.
   constructor(props: ErrorBoundaryProps) {
     super(props);
+    // Initializing state on the inherited property from React.Component
     this.state = {
       hasError: false,
       error: null,
@@ -31,21 +30,21 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("App Crash:", error, errorInfo);
-    // Fix: Using this.setState which is correctly inherited from React.Component.
+    console.error("App Crash Details:", error, errorInfo);
+    // Accessing setState method from the React.Component base class
     this.setState({ errorInfo });
   }
 
   render() {
-    // Fix: Using this.state which is correctly inherited from React.Component.
+    // Accessing the state property from the React.Component base class
     if (this.state.hasError) {
       return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-[#0f172a] text-white p-6 font-mono text-center">
           <div className="bg-red-900/20 p-4 rounded-full mb-4 border border-red-500/50">
             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" cy="8" x2="12" y2="12"></line><line x1="12" cy="16" x2="12.01" y2="16"></line></svg>
           </div>
-          <h1 className="text-xl font-bold mb-2">Application Error</h1>
-          <p className="text-slate-400 text-sm mb-4">Something went wrong while loading the app.</p>
+          <h1 className="text-xl font-bold mb-2">Application Crash</h1>
+          <p className="text-slate-400 text-sm mb-4">A critical error occurred. Please try reloading.</p>
           <div className="w-full max-w-lg bg-black/50 p-4 rounded-lg border border-slate-800 text-left overflow-auto max-h-64 mb-6">
             <p className="text-red-400 text-xs font-bold mb-1">{this.state.error?.toString()}</p>
             <pre className="text-[10px] text-slate-500">{this.state.error?.stack}</pre>
@@ -57,21 +56,19 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
       );
     }
 
-    // Fix: Using this.props which is correctly inherited from React.Component.
+    // Accessing the props property from the React.Component base class
     return this.props.children;
   }
 }
 
 const rootElement = document.getElementById('root');
-if (!rootElement) {
-  throw new Error("Could not find root element to mount to");
+if (rootElement) {
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(
+    <React.StrictMode>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </React.StrictMode>
+  );
 }
-
-const root = ReactDOM.createRoot(rootElement);
-root.render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
-  </React.StrictMode>
-);
