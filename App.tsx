@@ -1,8 +1,9 @@
+
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { checkAndRefreshStockList } from './services/stockListService';
 import { fetchRealStockData } from './services/marketDataService';
 import { runTechnicalScan } from './services/recommendationEngine';
-import { StockRecommendation, PortfolioItem, MarketData, Transaction, AppSettings, UserProfile, Funds, HoldingAnalysis } from './types';
+import { StockRecommendation, PortfolioItem, MarketData, Transaction, AppSettings, UserProfile, Funds, HoldingAnalysis, StrategyRules } from './types';
 import { AuthOverlay } from './components/AuthOverlay';
 import { TradeModal } from './components/TradeModal';
 import { runAutoTradeEngine } from './services/autoTradeEngine';
@@ -12,16 +13,27 @@ import { PageMarket } from './components/PageMarket';
 import { PagePaperTrading } from './components/PagePaperTrading';
 import { PageLivePNL } from './components/PageLivePNL';
 import { PageConfiguration } from './components/PageConfiguration';
+import { PageStrategyLog } from './components/PageStrategyLog';
 
 const GLOBAL_STORAGE = { USER: 'aitrade_current_user_v2' };
 const DEFAULT_FUNDS: Funds = { stock: 1000000, mcx: 0, forex: 0, crypto: 0 };
+const DEFAULT_RULES: StrategyRules = {
+    rsiBuyZone: 30,
+    rsiSellZone: 70,
+    vwapConfirm: true,
+    minVolMult: 1.5,
+    atrStopMult: 1.5,
+    atrTargetMult: 3.0,
+    maxTradesPerDay: 5
+};
 const DEFAULT_SETTINGS: AppSettings = {
     initialFunds: DEFAULT_FUNDS,
     autoTradeConfig: { mode: 'PERCENTAGE', value: 5 },
     activeBrokers: ['PAPER'], 
     enabledMarkets: { stocks: true }, 
     telegramBotToken: '',
-    telegramChatId: ''
+    telegramChatId: '',
+    strategyRules: DEFAULT_RULES
 };
 
 const SplashScreen = ({ visible }: { visible: boolean }) => {
@@ -187,6 +199,12 @@ export default function App() {
       setTransactions(prev => [...prev, { id: Date.now().toString(), type: 'SELL', symbol, assetType: 'STOCK', quantity, price, timestamp: Date.now(), broker: 'PAPER' }]);
   };
 
+  const handleUpdateRules = (rules: StrategyRules) => {
+    const next = { ...settings, strategyRules: rules };
+    setSettings(next);
+    if (storagePrefix) localStorage.setItem(`${storagePrefix}settings`, JSON.stringify(next));
+  };
+
   if (showSplash) return <SplashScreen visible={true} />;
   if (!user) return <AuthOverlay onLogin={handleLogin} />;
 
@@ -200,8 +218,9 @@ export default function App() {
       <main className="flex-1 overflow-y-auto custom-scrollbar w-full max-w-lg mx-auto md:max-w-7xl md:border-x md:border-slate-800">
         {activePage === 0 && <PageMarket recommendations={recommendations} marketData={marketData} onTrade={(s) => { setSelectedStock(s); setIsTradeModalOpen(true); }} onRefresh={() => { setRecommendations([]); loadMarketData(); }} isLoading={isLoading} enabledMarkets={settings.enabledMarkets} />}
         {activePage === 1 && <PagePaperTrading holdings={paperPortfolio} marketData={marketData} analysisData={analysisData} onSell={(s, b) => handleSell(s, 1, marketData[s]?.price || 0, b)} onAnalyze={handleManualAnalyze} isAnalyzing={isAnalyzing} funds={funds} activeBots={activeBots} onToggleBot={(b) => setActiveBots(p => ({...p, [b]: !p[b]}))} transactions={transactions} onUpdateFunds={setFunds} />}
-        {activePage === 2 && <PageLivePNL title="Broker Portfolio" subtitle="Live Connected Accounts" icon={Briefcase} holdings={paperPortfolio.filter(h => h.broker !== 'PAPER')} marketData={marketData} analysisData={analysisData} onSell={(s, b) => handleSell(s, 1, marketData[s]?.price || 0, b)} brokerBalances={{}} />}
-        {activePage === 3 && <PageConfiguration settings={settings} onSave={(s) => { setSettings(s); showNotification("Settings Saved"); }} transactions={transactions} activeBots={activeBots} onToggleBot={(b) => setActiveBots(p => ({...p, [b]: !p[b]}))} />}
+        {activePage === 2 && <PageStrategyLog recommendations={recommendations} rules={settings.strategyRules || DEFAULT_RULES} onUpdateRules={handleUpdateRules} />}
+        {activePage === 3 && <PageLivePNL title="Broker Portfolio" subtitle="Live Connected Accounts" icon={Briefcase} holdings={paperPortfolio.filter(h => h.broker !== 'PAPER')} marketData={marketData} analysisData={analysisData} onSell={(s, b) => handleSell(s, 1, marketData[s]?.price || 0, b)} brokerBalances={{}} />}
+        {activePage === 4 && <PageConfiguration settings={settings} onSave={(s) => { setSettings(s); showNotification("Settings Saved"); }} transactions={transactions} activeBots={activeBots} onToggleBot={(b) => setActiveBots(p => ({...p, [b]: !p[b]}))} />}
       </main>
       <BottomNav activeTab={activePage} onChange={setActivePage} />
       {selectedStock && <TradeModal isOpen={isTradeModalOpen} onClose={() => setIsTradeModalOpen(false)} stock={selectedStock} currentPrice={marketData[selectedStock.symbol]?.price || selectedStock.currentPrice} funds={funds} holdings={paperPortfolio.filter(p => p.symbol === selectedStock.symbol)} activeBrokers={['PAPER']} onBuy={handleBuy} onSell={handleSell} />}

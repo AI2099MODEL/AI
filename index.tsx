@@ -1,5 +1,5 @@
 
-import React, { ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 
@@ -13,11 +13,12 @@ interface ErrorBoundaryState {
   errorInfo: ErrorInfo | null;
 }
 
-// Fixed: Explicitly using React.Component to resolve member access issues (state, setState, props)
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+// Fixed: Explicitly importing Component to resolve member access issues (state, setState, props)
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     // Initializing state on the inherited property from React.Component
+    // Fix: Accessing state which is now correctly inherited from Component
     this.state = {
       hasError: false,
       error: null,
@@ -31,12 +32,12 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("App Crash Details:", error, errorInfo);
-    // Accessing setState method from the React.Component base class
+    // Fix: Accessing setState method inherited from the Component base class
     this.setState({ errorInfo });
   }
 
   render() {
-    // Accessing the state property from the React.Component base class
+    // Fix: Accessing the state property inherited from the Component base class
     if (this.state.hasError) {
       return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-[#0f172a] text-white p-6 font-mono text-center">
@@ -56,7 +57,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
       );
     }
 
-    // Accessing the props property from the React.Component base class
+    // Fix: Accessing the props property inherited from the Component base class
     return this.props.children;
   }
 }

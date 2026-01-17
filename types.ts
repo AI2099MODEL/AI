@@ -16,6 +16,16 @@ export interface Funds {
   crypto: number;
 }
 
+export interface StrategyRules {
+  rsiBuyZone: number;
+  rsiSellZone: number;
+  vwapConfirm: boolean;
+  minVolMult: number;
+  atrStopMult: number;
+  atrTargetMult: number;
+  maxTradesPerDay: number;
+}
+
 export interface StockRecommendation {
   symbol: string;
   name: string;
@@ -124,6 +134,7 @@ export interface AppSettings {
   telegramChatId: string;
   activeBrokers: BrokerID[];
   enabledMarkets: MarketSettings;
+  strategyRules?: StrategyRules;
   dhanClientId?: string;
   dhanAccessToken?: string;
   shoonyaUserId?: string;
