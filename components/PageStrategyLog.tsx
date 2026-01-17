@@ -47,17 +47,24 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
     setExpandedIndustries(industries.slice(0, 2));
 
     const interval = setInterval(() => {
-      const symbols = ['RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ICICIBANK', 'BHARTIARTL', 'SBI'];
-      const sym = symbols[Math.floor(Math.random() * symbols.length)];
+      // Prioritize BSE and Banks in logs as requested
+      const banks = ['HDFCBANK', 'ICICIBANK', 'SBIN', 'AXISBANK', 'KOTAKBANK'];
+      const bse = ['BSE'];
+      const topPicks = recommendations.slice(0, 5).map(r => r.symbol.split('.')[0]);
+      
+      const pool = [...banks, ...bse, ...topPicks];
+      const sym = pool[Math.floor(Math.random() * pool.length)];
+      
       const types: LogEntry['type'][] = ['INFO', 'SUCCESS', 'WARNING'];
       const type = types[Math.floor(Math.random() * types.length)];
       
       const messages = [
-        `Scanning ${sym} tick stream...`,
-        `Analyzing volume profile for ${sym}`,
-        `Checking RSI divergence on ${sym}`,
-        `${sym} nearing support level`,
-        `Detecting OI build-up in ${sym}`
+        `Analyzing volume profile for ${sym}...`,
+        `Scanning ${sym} tick stream for institutional interest`,
+        `Checking VWAP proximity for ${sym}`,
+        `${sym} nearing algorithmic buy zone`,
+        `Detecting OI surge in ${sym} derivatives`,
+        `RSI divergence detected on ${sym} (5m)`
       ];
 
       setLogs(prev => [...prev.slice(-29), {
@@ -67,10 +74,10 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
         type,
         symbol: sym
       }]);
-    }, 5000);
+    }, 4000);
 
     return () => clearInterval(interval);
-  }, [industries]);
+  }, [industries, recommendations]);
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -104,9 +111,6 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
     onUpdateRules(next);
   };
 
-  /**
-   * Heatmap helper to map score (0-100) to 1-10 range
-   */
   const scaleToTen = (score: number) => {
     return Math.max(1, Math.min(10, Math.round(score / 10)));
   };
@@ -118,9 +122,9 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
           <Cpu size={24} />
         </div>
         <div>
-          <h1 className="text-xl md:text-2xl font-black text-white tracking-tighter italic uppercase">Intrabot Control</h1>
-          <p className="text-[10px] md:text-xs text-slate-400 font-black tracking-widest uppercase flex items-center gap-1">
-            <Sparkles size={10} className="text-yellow-400"/> AI-Powered Execution Logic
+          <h1 className="text-xl md:text-2xl font-black text-white tracking-tighter italic uppercase leading-none">Intrabot Control</h1>
+          <p className="text-[10px] md:text-xs text-slate-400 font-black tracking-widest uppercase flex items-center gap-1 mt-1">
+            <Sparkles size={10} className="text-yellow-400"/> BSE & Banking Priority Active
           </p>
         </div>
       </div>
@@ -151,7 +155,7 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
                         <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
                             <Sparkles size={14}/> TOP 10 INTRADAY PICKS
                         </h3>
-                        <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Scaled 1-10</div>
+                        <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Scale 1-10</div>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                         {(aiIntradayPicks.length > 0 ? aiIntradayPicks : recommendations.filter(r => r.timeframe === 'BTST' || r.timeframe === 'INTRADAY').slice(0, 10).map(r => r.symbol)).map(sym => {
@@ -170,7 +174,6 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
                                             <div key={i} className={`w-1 h-1 rounded-full ${i < scaled ? 'bg-blue-500' : 'bg-slate-800'}`}></div>
                                         ))}
                                     </div>
-                                    {/* Score Overlay */}
                                     <div className="absolute top-1 right-1 text-[7px] font-black text-slate-700">{scaled}/10</div>
                                 </div>
                             );
@@ -178,7 +181,7 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
                     </div>
                 </div>
 
-                {/* INDUSTRY HEATMAP */}
+                {/* INDUSTRY HEATMAP WITH STOCK NAMES */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {industries.map(industry => {
                         const stocks = groupedUniverse[industry];
@@ -187,34 +190,42 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
                         
                         return (
                             <div key={industry} className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4">
-                                <div className="flex justify-between items-center mb-3">
+                                <div className="flex justify-between items-center mb-4">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{industry}</span>
-                                        <span className={`text-[8px] font-bold px-1.5 rounded-full ${scaledIndustry >= 7 ? 'bg-green-500/20 text-green-400' : scaledIndustry >= 4 ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-700 text-slate-500'}`}>
-                                            Strength: {scaledIndustry}/10
-                                        </span>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">{industry}</span>
+                                        <div className="flex gap-0.5">
+                                            {[...Array(5)].map((_, i) => (
+                                                <div key={i} className={`w-1 h-2 rounded-full ${i < Math.floor(scaledIndustry/2) ? 'bg-blue-500' : 'bg-slate-800'}`}></div>
+                                            ))}
+                                        </div>
                                     </div>
+                                    <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${scaledIndustry >= 7 ? 'bg-green-500/20 text-green-400' : scaledIndustry >= 4 ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-700 text-slate-500'}`}>
+                                        Power: {scaledIndustry}/10
+                                    </span>
                                 </div>
-                                <div className="flex flex-wrap gap-1">
+                                <div className="flex flex-wrap gap-1.5">
                                     {stocks.map(sym => {
                                         const data = marketData[sym];
-                                        const change = data?.changePercent || 0;
                                         const score = data?.technicals.score || 0;
                                         const scaledStock = scaleToTen(score);
+                                        const change = data?.changePercent || 0;
                                         
                                         return (
                                             <div 
                                                 key={sym} 
-                                                title={`${sym}: ${change.toFixed(2)}% | Scaled: ${scaledStock}/10`}
-                                                className={`w-6 h-6 rounded-sm border border-black/20 transition-all flex items-center justify-center text-[7px] font-black text-white/50 ${
+                                                className={`px-2 py-1.5 rounded-md border border-black/20 transition-all flex flex-col items-center justify-center min-w-[54px] ${
                                                     scaledStock >= 9 ? 'bg-green-500' : 
                                                     scaledStock >= 7 ? 'bg-green-700' : 
                                                     scaledStock >= 5 ? 'bg-blue-600' : 
-                                                    scaledStock >= 3 ? 'bg-slate-700' : 
+                                                    scaledStock >= 3 ? 'bg-slate-800' : 
                                                     'bg-red-900'
                                                 }`}
                                             >
-                                                {scaledStock}
+                                                <span className="text-[8px] font-mono font-bold text-white leading-none mb-0.5">{sym.split('.')[0]}</span>
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-[7px] font-black text-white/80">{scaledStock}</span>
+                                                    <div className={`w-1.5 h-1.5 rounded-full ${change >= 0 ? 'bg-green-400' : 'bg-red-400'}`}></div>
+                                                </div>
                                             </div>
                                         );
                                     })}
@@ -230,12 +241,12 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
             <div className="h-full flex flex-col animate-slide-up">
                 <div className="flex-1 bg-black/80 rounded-2xl border border-slate-800 p-4 font-mono text-[10px] md:text-xs overflow-y-auto custom-scrollbar shadow-inner">
                     {logs.map(log => (
-                        <div key={log.id} className="mb-1.5 flex gap-3 animate-fade-in">
-                            <span className="text-slate-600 shrink-0">[{log.timestamp}]</span>
-                            <span className={`shrink-0 font-bold ${log.type === 'SUCCESS' ? 'text-green-400' : log.type === 'WARNING' ? 'text-yellow-400' : 'text-blue-400'}`}>
+                        <div key={log.id} className="mb-2 flex gap-3 animate-fade-in border-b border-white/5 pb-1.5">
+                            <span className="text-slate-600 shrink-0 font-bold">[{log.timestamp}]</span>
+                            <span className={`shrink-0 font-black tracking-tighter ${log.type === 'SUCCESS' ? 'text-green-400' : log.type === 'WARNING' ? 'text-yellow-400' : 'text-blue-400'}`}>
                                 {log.type}:
                             </span>
-                            <span className="text-slate-300">{log.message}</span>
+                            <span className="text-slate-300 font-medium">{log.message}</span>
                         </div>
                     ))}
                     <div ref={logEndRef} />
@@ -247,7 +258,7 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
             <div className="bg-surface border border-slate-700 rounded-2xl p-6 shadow-2xl animate-slide-up space-y-8">
                 <div>
                     <h3 className="text-xs font-black text-blue-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-                        <Zap size={16} /> Intraday Mechanisms
+                        <Zap size={16} /> Intraday Scaling & Logic
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
@@ -267,8 +278,8 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
                             </div>
                         </div>
                         <div className="space-y-4">
-                            <div className="flex items-center justify-between p-4 bg-slate-900 rounded-2xl border border-slate-800">
-                                <label className="text-[10px] text-slate-500 font-black uppercase tracking-widest">VWAP Confirmation</label>
+                            <div className="flex items-center justify-between p-4 bg-slate-900 rounded-2xl border border-slate-800 shadow-inner">
+                                <label className="text-[10px] text-slate-500 font-black uppercase tracking-widest">VWAP Filter</label>
                                 <button onClick={() => handleRuleChange('vwapConfirm', !localRules.vwapConfirm)} className={`w-10 h-5 rounded-full relative transition-colors ${localRules.vwapConfirm ? 'bg-blue-600' : 'bg-slate-700'}`}>
                                     <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${localRules.vwapConfirm ? 'left-5.5' : 'left-0.5'}`}></div>
                                 </button>
@@ -278,7 +289,7 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
                 </div>
                 <div className="p-4 bg-indigo-900/10 border border-indigo-500/20 rounded-xl">
                     <p className="text-[10px] text-slate-400 italic font-medium leading-relaxed">
-                        Intraday logic prioritized for high-velocity scalping. Logic checks for <span className="text-white">Relative Volume (RVOL) {'>'} 2.0</span> and <span className="text-white">Price {'>'} VWAP</span> alongside Gemini-filtered stock selection. Heatmap strength scaled 1-10 based on real-time volatility.
+                        Bot prioritized for <span className="text-blue-400 font-bold uppercase">BSE</span>, <span className="text-blue-400 font-bold uppercase">Banks</span> and <span className="text-white font-bold">Top Scalp Candidates</span>. Heatmap reflects multi-timeframe volume clusters.
                     </p>
                 </div>
             </div>
@@ -288,9 +299,9 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
             <div className="h-full flex flex-col animate-slide-up bg-slate-900/50 rounded-2xl border border-slate-800 p-4">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">
-                        <BarChart3 size={14}/> Robot Universe Selection
+                        <BarChart3 size={14}/> Engine Universe
                     </h3>
-                    <div className="text-[7px] font-black text-blue-500/50 uppercase tracking-widest">Banks & BSE Auto-Inclusion Active</div>
+                    <div className="text-[7px] font-black text-blue-500/50 uppercase tracking-widest px-2 py-1 bg-blue-500/5 rounded border border-blue-500/10">BSE & Banks Forced Always</div>
                 </div>
                 <div className="relative mb-4">
                     <Search className="absolute left-3 top-2.5 text-slate-600" size={14} />
@@ -319,9 +330,9 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
                                     </button>
                                     <button 
                                         onClick={() => toggleIndustrySelect(industry)}
-                                        className={`text-[9px] font-black uppercase px-2 py-1 rounded border transition-all ${allSelected ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-500'}`}
+                                        className={`text-[9px] font-black uppercase px-2 py-1 rounded border transition-all ${allSelected ? 'bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-500/20' : 'bg-slate-800 border-slate-700 text-slate-500'}`}
                                     >
-                                        {allSelected ? 'All Selected' : 'Select Group'}
+                                        {allSelected ? 'All Active' : 'Enable Industry'}
                                     </button>
                                 </div>
                                 {isExpanded && (
@@ -349,15 +360,15 @@ export const PageStrategyLog: React.FC<PageStrategyLogProps> = ({ recommendation
         )}
       </div>
 
-      <div className="shrink-0">
+      <div className="shrink-0 bg-slate-900/80 p-4 rounded-2xl border border-white/5 shadow-2xl">
         <h3 className="text-[10px] font-black text-slate-500 mb-4 flex items-center gap-2 uppercase tracking-widest">
-          <Shield size={14} className="text-indigo-400" /> Current Robot Focus
+          <Shield size={14} className="text-indigo-400" /> Current Execution Focus
         </h3>
         <div className="flex gap-2 overflow-x-auto no-scrollbar">
           {(aiIntradayPicks.length > 0 ? aiIntradayPicks : recommendations.filter(r => r.timeframe === 'BTST' || r.timeframe === 'INTRADAY').slice(0, 5).map(r => r.symbol)).slice(0, 5).map((sym, i) => (
-            <div key={sym} className="bg-slate-800/50 border border-slate-700 p-3 rounded-xl flex flex-col items-center text-center flex-shrink-0 w-28">
+            <div key={sym} className="bg-slate-800/30 border border-white/5 p-3 rounded-xl flex flex-col items-center text-center flex-shrink-0 w-28 hover:bg-slate-800/50 transition-colors">
               <div className="text-[8px] font-black text-indigo-400 mb-1">UNIT {i + 1}</div>
-              <div className="font-bold text-white text-xs mb-1 font-mono">{sym.split('.')[0]}</div>
+              <div className="font-bold text-white text-xs mb-1 font-mono uppercase">{sym.split('.')[0]}</div>
               <div className="text-[9px] font-black text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full">
                 {scaleToTen(marketData[sym]?.technicals.score || 0)}/10
               </div>
